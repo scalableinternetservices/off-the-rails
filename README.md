@@ -1,24 +1,12 @@
 # README
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+11/13: Added Item model to DB with attributes:
+- name :string
+- price :decimal
+- condition :string (e.g. new, used, fair)
+- description :text
 
-Things you may want to cover:
+To run a db migration with docker:
+`docker-compose run web rails db:migrate`
 
-* Ruby version
 
-* System dependencies
-
-* Configuration
-
-* Database creation
-
-* Database initialization
-
-* How to run the test suite
-
-* Services (job queues, cache servers, search engines, etc.)
-
-* Deployment instructions
-
-* ...
