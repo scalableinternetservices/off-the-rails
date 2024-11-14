@@ -5,6 +5,7 @@
 - price :decimal
 - condition :string (e.g. new, used, fair)
 - description :text
+- user :reference # this will be the seller attached to the item
 
 To run a db migration with docker:
 `docker-compose run web rails db:migrate`
