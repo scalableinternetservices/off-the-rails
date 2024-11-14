@@ -2,30 +2,34 @@
 
 11/13: Added models to DB
 
-Item:
-- name :string
-- price :decimal
-- condition :string (e.g. new, used, fair)
-- description :text
-- user :reference # this will be the seller attached to the item
-- rating :reference # can create many reviews
-- order: reference # can place many orders
-
-User:
+**Item:**
 - name: string
-- item: :reference
-- order: :reference
-- rating: :reference
+- price: decimal
+- condition: string (e.g. new, used, fair)
+- description: text
+- user_id: reference # this will be the seller attached to the item
+- order_id: reference # an item belongs to an order - null until order placed
+- an item can also have many:
+    - reviews
 
-Order:
+**User:**
+- name: string
+- a user can have many:
+    - items
+    - orders
+    - ratings
+
+**Order:**
 - status: string
-- item: :reference
+- user_id: reference
+- an order can have many:
+    - items
 
-Rating:
+**Rating:**
 - rating: :integer (1-5)
 - review: :string
-- user: :reference
-- item: :reference
+- user_id: :reference
+- item_id: :reference
 
 To run a db migration with docker:
 `docker-compose run web rails db:migrate`

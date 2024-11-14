@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2024_11_14_001829) do
+ActiveRecord::Schema[7.1].define(version: 2024_11_14_215907) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -22,17 +22,16 @@ ActiveRecord::Schema[7.1].define(version: 2024_11_14_001829) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.bigint "order_id"
+    t.index ["order_id"], name: "index_items_on_order_id"
     t.index ["user_id"], name: "index_items_on_user_id"
   end
 
   create_table "orders", force: :cascade do |t|
     t.bigint "user_id", null: false
-    t.bigint "item_id", null: false
     t.string "status"
-    t.decimal "price"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["item_id"], name: "index_orders_on_item_id"
     t.index ["user_id"], name: "index_orders_on_user_id"
   end
 
@@ -53,8 +52,8 @@ ActiveRecord::Schema[7.1].define(version: 2024_11_14_001829) do
     t.datetime "updated_at", null: false
   end
 
+  add_foreign_key "items", "orders"
   add_foreign_key "items", "users"
-  add_foreign_key "orders", "items"
   add_foreign_key "orders", "users"
   add_foreign_key "ratings", "items"
   add_foreign_key "ratings", "users"
