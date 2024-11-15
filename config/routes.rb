@@ -9,9 +9,9 @@ Rails.application.routes.draw do
   post '/login', to: 'sessions#create'
   get '/logout', to: 'sessions#destroy'
 
-  get '*path', to: 'items#index'
-
   resources :items
+
+  get '*path', to: 'items#index'
   get "up" => "rails/health#show", as: :rails_health_check
 
   # Defines the root path route ("/")

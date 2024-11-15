@@ -13,3 +13,64 @@
  *= require_tree .
  *= require_self
  */
+
+
+*{
+    font-family: 'Trebuchet MS', sans-serif;
+    text-align: center;
+}
+
+ul {
+    text-align: center;
+    list-style-position: inside;
+}
+
+#separator:before {
+    display: block;
+    content: '';
+    background: silver;
+    height: 10px;
+    margin-left: 100px;
+    margin-right: 100px;
+}
+
+.center-display {
+    display: flex;             /* Make the body a flex container */
+    justify-content: center;   /* Horizontally center content */
+    height: 100vh;             /* Full viewport height */
+    margin: 0;                 /* Remove default margin */
+    background-color: #f7f7f7; /* Optional: set background color */
+}
+
+
+/* Grid container to align items in rows and columns */
+.items-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Responsive grid */
+    gap: 20px; /* Space between items */
+    padding: 20px;
+    grid-auto-flow: row;
+    width: 80%; /* Optional: adjust the width of the grid */
+}
+  
+/* Styling each item card */
+.item-card {
+    border: 1px solid #ccc;    /* Bounding box */
+    padding: 15px;
+    border-radius: 8px;         /* Rounded corners */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Card shadow */
+    background-color: #fff;     /* Background color for card */
+    display: flex;              /* Flexbox inside each card */
+    flex-direction: column;     /* Arrange content vertically */
+    align-items: center;        /* Center the content inside each card */
+    max-height: 400px;
+}
+  
+.item-card h3 {
+    margin-top: 0;
+}
+  
+.item-card p {
+    margin: 5px 0;
+}
+  
