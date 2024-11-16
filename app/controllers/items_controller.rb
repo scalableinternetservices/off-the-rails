@@ -2,7 +2,7 @@ class ItemsController < ApplicationController
   before_action :check_logged_in 
   
   def index
-    @items = Item.order(created_at: :desc)
+    @items = Item.where(order_id: nil).order(created_at: :desc)
   end
 
   def show

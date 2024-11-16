@@ -1,0 +1,16 @@
+<h1>Order placed</h1>
+
+<div id='separator'></div> 
+
+<h2>Items in this order:</h2>
+
+<div class="items-grid">
+  <% @order.items.each do |item| %>
+    <div class="item-card">
+      <p><strong>Description:</strong> <%= item.description %></p>
+      <p><strong>Price:</strong> $<%= item.price %></p>
+      <p><strong>Condition:</strong> <%= item.condition %></p>
+      <p><strong>Seller:</strong> <%= item.user.name %></p>
+    </div>
+  <% end %>
+</div>

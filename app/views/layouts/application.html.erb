@@ -13,15 +13,22 @@
   <body>
     <!-- Navbar or header area for login/logout links -->
     <header>
+      <div class="left-header">
       <% if current_user %>
-        <p>Welcome, <%= current_user.name %>!</p>
-        <%= link_to "Logout", logout_path, method: :delete %>
-        <%= link_to "My Profile", profile_path, method: :get %>
+        <p>Welcome, <%= current_user.name %>! | 
+        <%= link_to "Logout", logout_path, method: :delete %> |
+        <%= link_to "My Profile", profile_path, method: :get %></p>
       <% else %>
         <%= link_to "Login", login_path %>
       <% end %>
+      </div>
+
+      <div class="right-header">
+        <%= link_to "Home Page", root_path %>
+      </div>
     </header>
     
     <%= yield %>
+
   </body>
 </html>
