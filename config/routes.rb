@@ -14,6 +14,11 @@ Rails.application.routes.draw do
   resources :items
   resources :users
   resources :orders
+  resources :items do
+    collection do
+      get 'user_listings'
+    end
+  end
 
   get '*path', to: 'items#index'
   get "up" => "rails/health#show", as: :rails_health_check

@@ -46,6 +46,10 @@ class ItemsController < ApplicationController
 
     redirect_to root_path, status: :see_other
   end
+
+  def user_listings
+    @items = current_user.items.order(created_at: :desc)
+  end
     
   private
     def item_params
