@@ -19,4 +19,13 @@
 
 <div id='separator'></div> 
 
+<% if @item.user_id != session[:user_id] %> 
+  <%= form_with model: @order, url: orders_path, method: :post do |form| %>
+    <%= form.hidden_field :item_id, value: @item.id %>  <!-- Passing item_id as a hidden field -->
+
+    <%= form.submit 'Place Order for Item' %>
+  <% end %>
+<% end %>
+<div id='separator'></div> 
+
 <%= link_to "Back to All Listings", root_path %>

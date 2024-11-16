@@ -8,5 +8,4 @@ class Item < ApplicationRecord
     validates :condition, presence: true
     validates :description, length: {maximum: 500}
     # Validate price is present, is a number, and is non-negative
-  
 end
