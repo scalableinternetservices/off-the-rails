@@ -9,7 +9,10 @@ Rails.application.routes.draw do
   post '/login', to: 'sessions#create'
   get '/logout', to: 'sessions#destroy'
 
+  get '/profile', to: 'sessions#profile'
+
   resources :items
+  resources :users
 
   get '*path', to: 'items#index'
   get "up" => "rails/health#show", as: :rails_health_check

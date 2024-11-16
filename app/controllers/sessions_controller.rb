@@ -2,6 +2,9 @@ class SessionsController < ApplicationController
     def new
         #render new log in here
     end
+
+    def profile
+    end
   
     def create
       puts params

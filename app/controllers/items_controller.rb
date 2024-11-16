@@ -25,10 +25,28 @@ class ItemsController < ApplicationController
     end
   end
 
-  def edit
+  def update
     @item = Item.find(params[:id])
+
+    if @item.update(item_params)
+      redirect_to @item
+    else
+      render :edit, status: :unprocessable_entity
+    end
   end
 
+  def edit
+    @item = Item.find(params[:id]) 
+  end
+
+  def destroy
+    @item = Item.find(params[:id])
+    result = @item.destroy!
+    puts result
+
+    redirect_to root_path, status: :see_other
+  end
+    
   private
     def item_params
       params.require(:item).permit(:name, :description, :price, :condition)

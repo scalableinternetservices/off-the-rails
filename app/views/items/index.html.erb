@@ -9,10 +9,11 @@
 <div class="items-grid">
   <% @items.each do |item| %>
     <div class="item-card">
-      <h3><%= item.name %></h3>
+      <h3><%= link_to item.name, item %></h3>
       <p><strong>Description:</strong> <%= item.description %></p>
       <p><strong>Price:</strong> $<%= item.price %></p>
       <p><strong>Condition:</strong> <%= item.condition %></p>
+      <p><strong>Seller:</strong> <%= item.user.name %></p>
     </div>
   <% end %>
 </div>

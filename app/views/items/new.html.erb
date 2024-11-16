@@ -4,21 +4,33 @@
   <div>
     <%= form.label :name %><br>
     <%= form.text_field :name %>
+    <% @item.errors.full_messages_for(:name).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
   </div>
 
   <div>
     <%= form.label :description %><br>
     <%= form.text_area :description %>
+    <% @item.errors.full_messages_for(:description).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
   </div>
 
   <div>
     <%= form.label :price %>
     <%= form.number_field :price, step: "0.01", min: "0", class: "form-control", required: true %>
+    <% @item.errors.full_messages_for(:price).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
   </div>
 
   <div>
     <%= form.label :condition %>
     <%= form.select :condition, options_for_select(["NEW", "USED", "FAIR"]), {}, class: "form-control", required: true %>
+    <% @item.errors.full_messages_for(:condition).each do |message| %>
+      <div><%= message %></div>
+    <% end %>
   </div>
 
   <div>

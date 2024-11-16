@@ -1,0 +1,22 @@
+<h1><%= @item.name %></h1>
+
+<div class="item-card">
+    <h3><%= @item.name %></h3>
+    <p><strong>Description:</strong> <%= @item.description %></p>
+    <p><strong>Price:</strong> $<%= @item.price %></p>
+    <p><strong>Condition:</strong> <%= @item.condition %></p>
+    <p><strong>Seller:</strong> <%= @item.user.name %></p>
+</div>
+
+<% if @item.user_id == session[:user_id] %>
+  <p><%= link_to "Edit Item", edit_item_path(@item) %> |
+  <%= link_to "Delete Item", item_path(@item), data: {
+                      turbo_method: :delete,
+                      turbo_confirm: "Are you sure?"
+                    } %>
+  </p>
+<% end %>
+
+<div id='separator'></div> 
+
+<%= link_to "Back to All Listings", root_path %>
