@@ -23,4 +23,8 @@ class UsersController < ApplicationController
       def user_params
         params.require(:user).permit(:name)
       end
+      
+      def profile
+        @items = current_user.items.order(created_at: :desc)
+      end
 end

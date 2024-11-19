@@ -4,6 +4,7 @@ class SessionsController < ApplicationController
     end
 
     def profile
+      @items = current_user.items.order(created_at: :desc)
     end
   
     def create
