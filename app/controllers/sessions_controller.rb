@@ -21,6 +21,7 @@ class SessionsController < ApplicationController
 
       if user 
         log_in user
+        @cart = current_cart
         #redirect_back_or user
         redirect_to root_path
       else
