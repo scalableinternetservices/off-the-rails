@@ -14,6 +14,10 @@ Rails.application.routes.draw do
   resources :items
   resources :users
   resources :orders
+  resources :carts, only: [:show] do
+    post 'add_item/:item_id', to: 'carts#add_item', as: 'add_item'
+    delete 'remove_item/:item_id', to: 'carts#remove_item', as: 'remove_item'
+  end
   resources :items do
     collection do
       get 'user_listings'

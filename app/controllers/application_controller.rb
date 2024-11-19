@@ -2,6 +2,11 @@ class ApplicationController < ActionController::Base
   # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
   helper_method :current_user, :log_in, :log_out, :check_logged_in
   rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
+  helper_method :current_cart
+
+  def current_cart
+    current_user.cart || current_user.create_cart
+  end
 
   private
 

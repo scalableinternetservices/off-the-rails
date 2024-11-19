@@ -18,6 +18,7 @@
         <p>Welcome, <%= current_user.name %>! | 
         <%= link_to "Logout", logout_path, method: :delete %> |
         <%= link_to "My Profile", profile_path, method: :get %></p>
+        <%= link_to 'View Cart', cart_path(current_user.cart) %>
       <% else %>
         <%= link_to "Login", login_path %>
       <% end %>
