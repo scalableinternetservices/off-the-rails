@@ -1,9 +1,15 @@
-<h1>Order</h1>
+<h1>Orders</h1>
 
-<ul>
-  <% @orders.each do |order| %>
-    <li>
-      <%= order.id %>
-    </li>
-  <% end %>
-</ul>
+<% @orders.each do |order| %>
+  <h2>Order <%= order.id %></h2>
+  <div class="items-grid">
+      <% order.items.each do |item| %>
+        <div class="item-card">
+          <p><strong>Description:</strong> <%= item.description %></p>
+          <p><strong>Price:</strong> $<%= item.price %></p>
+          <p><strong>Condition:</strong> <%= item.condition %></p>
+          <p><strong>Seller:</strong> <%= item.user.name %></p>
+        </div>
+      <% end %>
+  </div>
+<% end %>
