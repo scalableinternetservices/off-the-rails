@@ -3,6 +3,13 @@ class ItemsController < ApplicationController
   
   def index
     @items = Item.where(order_id: nil).order(created_at: :desc)
+    if params[:min_price].present? && params[:max_price].present?
+      @items = @items.where(price: params[:min_price]..params[:max_price])
+    elsif params[:min_price].present?
+      @items = @items.where("price >= ?", params[:min_price])
+    elsif params[:max_price].present?
+      @items = @items.where("price <= ?", params[:max_price])
+    end
   end
 
   def show
