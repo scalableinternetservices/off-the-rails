@@ -10,6 +10,10 @@ class ItemsController < ApplicationController
     elsif params[:max_price].present?
       @items = @items.where("price <= ?", params[:max_price])
     end
+      # Condition filter, ignore "All"
+    if params[:condition].present? && params[:condition] != 'All'
+      @items = @items.where(condition: params[:condition])
+    end
 
     if params[:query].present?
       @items = @items.where("name ILIKE :query OR description ILIKE :query", query: "%#{params[:query]}%")

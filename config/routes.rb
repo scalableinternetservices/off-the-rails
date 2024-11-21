@@ -10,8 +10,6 @@ Rails.application.routes.draw do
   get '/logout', to: 'sessions#destroy'
 
   get '/profile', to: 'sessions#profile'
-
-  resources :items
   resources :users
   resources :orders
   resources :carts, only: [:show] do
@@ -22,6 +20,7 @@ Rails.application.routes.draw do
     collection do
       get 'user_listings'
     end
+    resources :ratings, only: [:new, :create]
   end
 
   get '*path', to: 'items#index'

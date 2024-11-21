@@ -19,14 +19,14 @@
         <%= link_to "Logout", logout_path, method: :delete %> |
         <%= link_to "My Profile", profile_path, method: :get %></p>
         <%= link_to 'View Cart', cart_path(current_user.cart) %>
+        <div class="right-header">
+          <%= link_to "Home Page", root_path %>
+        </div>
       <% else %>
         <%= link_to "Login", login_path %>
       <% end %>
       </div>
 
-      <div class="right-header">
-        <%= link_to "Home Page", root_path %>
-      </div>
     </header>
     
     <%= yield %>

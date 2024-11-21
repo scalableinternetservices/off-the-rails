@@ -17,18 +17,19 @@ class OrdersController < ApplicationController
     end
 
     def create
-        @order = Order.new(status: "PLACED")
-        @item = Item.find(params[:item_id])  # Retrieve item_id passed via the form
-
-        @order.user_id = current_user.id
-        @order.items << @item
-        puts "===CREATING ORDER==="
-
+        @cart = current_user.cart
+        @order = Order.new(status: "PLACED", user_id: current_user.id)
+    
+        @cart.cart_items.each do |cart_item|
+          @order.items << cart_item.item
+        end
+    
         if @order.save
-            # Optionally, associate item with the order here if needed
-            redirect_to @order, notice: 'Order placed successfully!'
+          # Clear the cart after successful checkout
+          @cart.cart_items.destroy_all
+          redirect_to @order, notice: 'Order placed successfully!'
         else
-            redirect_to root_path
+          redirect_to cart_path(@cart), alert: 'Order could not be placed. Please try again.'
         end
     end
 

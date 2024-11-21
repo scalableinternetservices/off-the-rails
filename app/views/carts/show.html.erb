@@ -12,6 +12,8 @@
       </div>
     <% end %>
   </div>
+  <!-- Checkout Button -->
+  <%= button_to 'Checkout', orders_path, method: :post, class: 'checkout-button' %>
 <% else %>
   <p>Your cart is empty.</p>
 <% end %>

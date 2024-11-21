@@ -9,7 +9,25 @@
           <p><strong>Price:</strong> $<%= item.price %></p>
           <p><strong>Condition:</strong> <%= item.condition %></p>
           <p><strong>Seller:</strong> <%= item.user.name %></p>
-        </div>
+          
+          <!-- Only display the rating form if the current user has not rated this item yet -->
+          <% if item.ratings.where(user_id: current_user.id).empty? %>
+            <%= form_with model: [item, item.ratings.build] do |rating_form| %>
+              <div class="rating-form">
+                <%= rating_form.label :rating, "Rate this item:" %>
+                <%= rating_form.select :rating, options_for_select([1, 2, 3, 4, 5]), prompt: "Select a rating" %><br>
+
+                <%= rating_form.label :review, "Write a review:" %>
+                <%= rating_form.text_area :review, rows: 3, placeholder: "Write your review here..." %><br>
+
+                <%= rating_form.submit "Submit Rating and Review", class: "submit-rating" %>
+              </div>
+            <% end %>
+          <% else %>
+            <p>You have already rated this item.</p>
+          <% end %>
+        
+          </div>
       <% end %>
   </div>
 <% end %>
