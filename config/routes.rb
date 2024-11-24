@@ -23,6 +23,8 @@ Rails.application.routes.draw do
     resources :ratings, only: [:new, :create]
   end
 
+  get '/ratings', to: 'ratings#show'
+
   get '*path', to: 'items#index'
   get "up" => "rails/health#show", as: :rails_health_check
 

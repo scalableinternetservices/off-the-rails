@@ -16,7 +16,11 @@ class RatingsController < ApplicationController
         render :new, status: :unprocessable_entity
       end
     end
-  
+
+    def show 
+      @ratings = Rating.where(user_id: current_user.id)
+    end
+
     private
   
     def check_purchase
