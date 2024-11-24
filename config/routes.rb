@@ -24,6 +24,7 @@ Rails.application.routes.draw do
   end
 
   get '/ratings', to: 'ratings#show'
+  get '/your_ratings', to: 'ratings#see'
 
   get '*path', to: 'items#index'
   get "up" => "rails/health#show", as: :rails_health_check

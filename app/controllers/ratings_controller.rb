@@ -21,6 +21,11 @@ class RatingsController < ApplicationController
       @ratings = Rating.where(user_id: current_user.id)
     end
 
+    def see 
+      @items = Item.where(user_id: current_user.id)
+      @ratings = Rating.where(item_id: @items.ids)
+    end
+
     private
   
     def check_purchase
