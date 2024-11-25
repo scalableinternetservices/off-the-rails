@@ -63,6 +63,8 @@
         <% else %>
           <%= button_to 'Add to Cart', cart_add_item_path(cart_id: current_cart.id, item_id: item.id), method: :post %>
         <% end %>
+
+        <div class="list-date">Listed <%= item.created_at.strftime('%B %d, %Y') %></div>
       </div>
     <% end %>
   </div>

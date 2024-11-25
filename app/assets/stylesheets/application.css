@@ -63,7 +63,7 @@ ul {
     display: flex;              /* Flexbox inside each card */
     flex-direction: column;     /* Arrange content vertically */
     align-items: center;        /* Center the content inside each card */
-    max-height: 400px;
+    max-height: 350px;
 }
   
 .item-card h3 {
@@ -73,3 +73,10 @@ ul {
 .item-card p {
     margin: 5px 0;
 }
+
+.list-date {
+    margin-top: auto;  /* Push the "created-at" paragraph to the bottom */
+    font-size: 0.8em;
+    color: #777;
+    margin-bottom: 0;  /* Remove extra margin at the bottom */
+  }
