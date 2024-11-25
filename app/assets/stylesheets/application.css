@@ -74,9 +74,29 @@ ul {
     margin: 5px 0;
 }
 
+.item-card button {
+    font-size: 1em;  /* Increase font size */
+    padding: 12px 20px;  /* Add more padding to make the button bigger */
+    background-color: #007bff;  /* A nice blue background color */
+    color: white;  /* White text color */
+    border: none;  /* Remove border */
+    border-radius: 8px;  /* Rounded corners */
+    cursor: pointer;  /* Change cursor to pointer on hover */
+    transition: background-color 0.3s ease; 
+}
+
+.item-card button:hover{
+    background-color: #0056b3;
+}
+
+.cart-or-buy {
+    margin-top: auto;
+    margin-bottom: auto;
+}
+
 .list-date {
     margin-top: auto;  /* Push the "created-at" paragraph to the bottom */
     font-size: 0.8em;
     color: #777;
     margin-bottom: 0;  /* Remove extra margin at the bottom */
-  }
+}

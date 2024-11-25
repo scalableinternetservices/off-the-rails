@@ -56,6 +56,7 @@
         <p><strong>Condition:</strong> <%= item.condition %></p>
         <p><strong>Seller:</strong> <%= item.user.name %></p>
 
+        <div class="cart-or-buy">
         <% if current_cart.items.include?(item) %>
           <p><strong>Already in Cart</strong></p>
         <% elsif item.user_id == current_user.id %>
@@ -63,7 +64,7 @@
         <% else %>
           <%= button_to 'Add to Cart', cart_add_item_path(cart_id: current_cart.id, item_id: item.id), method: :post %>
         <% end %>
-
+        </div>
         <div class="list-date">Listed <%= item.created_at.strftime('%B %d, %Y') %></div>
       </div>
     <% end %>
