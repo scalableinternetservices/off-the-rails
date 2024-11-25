@@ -13,9 +13,14 @@
     <% end %>
   </div>
   <!-- Checkout Button -->
-  <%= button_to 'Checkout', orders_path, method: :post, class: 'checkout-button' %>
-<% else %>
+  <div class="cart-button">
+    <%= button_to 'Checkout', orders_path, method: :post, class: 'cart-button' %>
+  </div>
+  <% else %>
   <p>Your cart is empty.</p>
 <% end %>
 
-<%= link_to 'Continue Shopping', root_path %>
+<div class="cart-button">
+  <%= button_to 'Continue Shopping', root_path, method: :get, class: 'cart-button' %>
+</div>
+

@@ -42,7 +42,6 @@ ul {
     background-color: #f7f7f7; /* Optional: set background color */
 }
 
-
 /* Grid container to align items in rows and columns */
 .items-grid {
     display: grid;
@@ -74,7 +73,8 @@ ul {
     margin: 5px 0;
 }
 
-.item-card button {
+.item-card button, .cart-button  {
+    display: inline-block;
     font-size: 1em;  /* Increase font size */
     padding: 12px 20px;  /* Add more padding to make the button bigger */
     background-color: #007bff;  /* A nice blue background color */
@@ -85,7 +85,7 @@ ul {
     transition: background-color 0.3s ease; 
 }
 
-.item-card button:hover{
+.item-card button:hover, .cart-button:hover{
     background-color: #0056b3;
 }
 
@@ -99,4 +99,8 @@ ul {
     font-size: 0.8em;
     color: #777;
     margin-bottom: 0;  /* Remove extra margin at the bottom */
+}
+
+.order-by-button, .search-button {
+    padding: 5px 10px; 
 }
