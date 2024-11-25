@@ -6,6 +6,7 @@
     <p><strong>Price:</strong> $<%= @item.price %></p>
     <p><strong>Condition:</strong> <%= @item.condition %></p>
     <p><strong>Seller:</strong> <%= @item.user.name %></p>
+    <p><strong>Seller rating:</strong> <%= @seller_rating %></p>
 </div>
 
 <% if @item.user_id == session[:user_id] %>
@@ -19,12 +20,12 @@
 
 <div id='separator'></div> 
 
-<% if @item.user_id != session[:user_id] %> 
-  <%= form_with model: @order, url: orders_path, method: :post do |form| %>
-    <%= form.hidden_field :item_id, value: @item.id %>  <!-- Passing item_id as a hidden field -->
-
-    <%= form.submit 'Place Order for Item' %>
-  <% end %>
+<% if current_cart.items.include?(@item) %>
+  <p><strong>Already in Cart</strong></p>
+<% elsif @item.user_id == current_user.id %>
+  <p><strong>This is your item</strong></p>
+<% else %>
+  <%= button_to 'Add to Cart', cart_add_item_path(cart_id: current_cart.id, item_id: @item.id), method: :post %>
 <% end %>
 <div id='separator'></div> 
 
