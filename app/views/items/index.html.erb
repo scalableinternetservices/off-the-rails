@@ -27,7 +27,7 @@
     <!-- Condition Filter -->
       <div>
         <%= form.label :condition, "Condition" %>
-        <%= form.select :condition, options_for_select(['All', 'NEW', 'USED', 'FAIR'], params[:condition] || 'All'), include_blank: false %>
+        <%= form.select :condition, options_for_select(["NEW", "USED - LIKE NEW", "USED - GOOD", "USED - ACCEPTABLE"], params[:condition] || 'All'), include_blank: false %>
       </div>
 
       <!-- Reset Filters Link -->
