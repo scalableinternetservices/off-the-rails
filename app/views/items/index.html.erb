@@ -27,7 +27,7 @@
     <!-- Condition Filter -->
       <div>
         <%= form.label :condition, "Condition" %>
-        <%= form.select :condition, options_for_select(["NEW", "USED - LIKE NEW", "USED - GOOD", "USED - ACCEPTABLE"], params[:condition] || 'All'), include_blank: false %>
+        <%= form.select :condition, options_for_select(["ALL", "NEW", "USED - LIKE NEW", "USED - GOOD", "USED - ACCEPTABLE"], params[:condition] || 'All'), include_blank: false %>
       </div>
 
       <!-- Reset Filters Link -->
@@ -40,6 +40,24 @@
   <!-- Search Button on a New Line -->
   <div class="search-button">
     <%= form.submit "Search" %>
+  </div>
+<% end %>
+
+<div id='separator'></div>
+
+<%= form_with url: items_path, method: :get, local: true, class: "order-by-form" do |form| %>
+  <!-- Order By Dropdown -->
+  <div>
+    <%= form.label :order_by, "Sort By" %>
+    <%= form.select :order_by, options_for_select([
+      ['Time: Newest Listings First', 'created_at_desc'],
+      ['Time: Oldest Listings First', 'created_at_asc'],
+      ['Price: Low to High', 'price_asc'],
+      ['Price: High to Low', 'price_desc']
+    ], params[:order_by] || 'created_at_desc') %>
+  </div>
+  <div class="order-by-button">
+    <%= form.submit "Sort" %>
   </div>
 <% end %>
 
@@ -65,7 +83,10 @@
           <%= button_to 'Add to Cart', cart_add_item_path(cart_id: current_cart.id, item_id: item.id), method: :post %>
         <% end %>
         </div>
-        <div class="list-date">Listed <%= item.created_at.strftime('%B %d, %Y') %></div>
+        
+        <div class="list-date">
+          Listed <%= item.created_at.strftime('%B %d, %Y at %I:%M %p') %>
+        </div>
       </div>
     <% end %>
   </div>
