@@ -22,6 +22,11 @@ class ItemsController < ApplicationController
 
   def show
     @item = Item.find(params[:id])
+    @seller_items = Item.where(user_id: @item.user)
+    @ratings = Rating.where(item_id: @seller_items.ids)
+    @sum = 0
+    @ratings.each { |x| @sum += x.rating}
+    @seller_rating = @sum.to_f / @ratings.length()
   end
 
   def new
