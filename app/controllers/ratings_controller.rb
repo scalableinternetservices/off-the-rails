@@ -24,6 +24,10 @@ class RatingsController < ApplicationController
     def see 
       @items = Item.where(user_id: current_user.id)
       @ratings = Rating.where(item_id: @items.ids)
+
+      @sum = 0
+      @ratings.each { |x| @sum += x.rating}
+      @seller_rating = @sum.to_f / @ratings.length()
     end
 
     private

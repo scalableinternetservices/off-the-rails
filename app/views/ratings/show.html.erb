@@ -5,7 +5,7 @@
 <% @ratings.each do |rating| %>
     <div class="item-card">
         <h2> Item: <%= rating.item.name %> </h2>
-        <p><strong>Seller:</strong> <%= rating.item.user.name %> </p>
+        <p><strong>Seller:</strong> <%= rating.item.user.name %></p>
         <p><strong>Rating:</strong> <%= rating.rating %></p>
         <p><strong>Review:</strong> <%= rating.review %></p>
     </div>
