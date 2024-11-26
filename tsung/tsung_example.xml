@@ -21,7 +21,7 @@
     </arrivalphase>
     <arrivalphase phase="4" duration="5" unit="second">
       <users arrivalrate="8" unit="second"></users>
-    </arrivalphase>
+    <!-- </arrivalphase>
     <arrivalphase phase="5" duration="5" unit="second">
       <users arrivalrate="16" unit="second"></users>
     </arrivalphase>
@@ -33,25 +33,39 @@
     </arrivalphase>
     <arrivalphase phase="8" duration="5" unit="second">
       <users arrivalrate="128" unit="second"></users>
-    </arrivalphase>
-    <arrivalphase phase="9" duration="5" unit="second">
-      <users arrivalrate="256" unit="second"></users>
-    </arrivalphase>
-    <arrivalphase phase="10" duration="5" unit="second">
-      <users arrivalrate="512" unit="second"></users>
-    </arrivalphase>
+    </arrivalphase> -->
   </load>
 
   <options>
     <!-- Set connection timeout to 2 seconds -->
     <option name="global_ack_timeout" value="2000"></option>
+    <options>
+        <dyn_variable name="user_id" file="users.csv" />
+        <dyn_variable name="username" file="users.csv" />
+    </options>
   </options>
 
-  <sessions>
-    <session name="example" type="ts_http" weight="1">
-      <request><http method="GET" url="/"></http></request>
-      <request><http method="GET" url="/schedule/"></http></request>
-      <request><http method="GET" url="/project/"></http></request>
+  <!-- Desired Workflow -->
+    <session name="login_workflow" type="ts_http" weight="1">
+      <!-- Step 1: Login -->
+      <request>
+        <http method="POST" url="/login" version="1.1">
+          <http_header name="Content-Type" value="application/x-www-form-urlencoded"/>
+          <body>username=%_username%</body>
+        </http>
+      </request>
+      
+      <!-- Step 2: View all listings -->
+      <request>
+        <http method="GET" url="/" version="1.1"></http>
+      </request>
+
+      <!-- Step 3: Wait 1 second -->
+      <thinktime value="1"></thinktime>
+
+      <!-- Step 4: Logout -->
+      <request>
+        <http method="POST" url="/logout" version="1.1"></http>
+      </request>
     </session>
-  </sessions>
 </tsung>
