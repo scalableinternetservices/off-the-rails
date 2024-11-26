@@ -1,0 +1,1 @@
+scp -i [YOUR_PEM] tsung_example.xml ec2-user@35.92.71.214:

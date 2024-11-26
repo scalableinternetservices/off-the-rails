@@ -6,7 +6,7 @@
   </clients>
 
   <servers>
-    <server host="http://off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com" port="443" type="ssl"></server>
+    <server host="cs291.com" port="443" type="ssl"></server>
   </servers>
 
   <load>
@@ -21,7 +21,7 @@
     </arrivalphase>
     <arrivalphase phase="4" duration="5" unit="second">
       <users arrivalrate="8" unit="second"></users>
-    </arrivalphase>
+    <!-- </arrivalphase>
     <arrivalphase phase="5" duration="5" unit="second">
       <users arrivalrate="16" unit="second"></users>
     </arrivalphase>
@@ -33,13 +33,7 @@
     </arrivalphase>
     <arrivalphase phase="8" duration="5" unit="second">
       <users arrivalrate="128" unit="second"></users>
-    </arrivalphase>
-    <arrivalphase phase="9" duration="5" unit="second">
-      <users arrivalrate="256" unit="second"></users>
-    </arrivalphase>
-    <arrivalphase phase="10" duration="5" unit="second">
-      <users arrivalrate="512" unit="second"></users>
-    </arrivalphase>
+    </arrivalphase> -->
   </load>
 
   <options>
@@ -47,11 +41,30 @@
     <option name="global_ack_timeout" value="2000"></option>
   </options>
 
-  <sessions>
-    <session name="example" type="ts_http" weight="1">
-      <request><http method="GET" url="/"></http></request>
-      <request><http method="GET" url="/schedule/"></http></request>
-      <request><http method="GET" url="/project/"></http></request>
+  <!-- Basic Login/logout Workflow -->
+    <session name="login_workflow" type="ts_http" weight="1">
+      <setdynvars sourcetype="csv" file="usernames.csv" delimiter="," order="iter">
+        <var name="username" />
+      </setdynvars>
+      
+      <!-- Step 1: Login -->
+      <request>
+        <http method="POST" url="/login" version="1.1">
+          <post>name=%%_username%%</post>
+        </http>
+      </request>
+      
+      <!-- Step 2: View all listings -->
+      <request>
+        <http method="GET" url="/" version="1.1"></http>
+      </request>
+
+      <!-- Step 3: Wait 1 second -->
+      <thinktime value="1"></thinktime>
+
+      <!-- Step 4: Logout -->
+      <request>
+        <http method="POST" url="/logout" version="1.1"></http>
+      </request>
     </session>
-  </sessions>
 </tsung>
