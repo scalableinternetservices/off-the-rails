@@ -2,7 +2,19 @@ class ItemsController < ApplicationController
   before_action :check_logged_in 
   
   def index
-    @items = Item.where(order_id: nil).order(created_at: :desc)
+    case params[:order_by]
+    when 'created_at_desc'
+      @items = Item.where(order_id: nil).order(created_at: :desc)  # Sort by date listed, newest first
+    when 'created_at_asc'
+      @items = Item.where(order_id: nil).order(:created_at)  # Sort by date listed, newest first
+    when 'price_asc'
+      @items = Item.where(order_id: nil).order(:price)  # Sort by price from lowest to highest
+    when 'price_desc'
+      @items = Item.where(order_id: nil).order(price: :desc)  # Sort by price from highest to lowest
+    else
+      @items = Item.where(order_id: nil).order(created_at: :desc)
+    end
+    
     if params[:min_price].present? && params[:max_price].present?
       @items = @items.where(price: params[:min_price]..params[:max_price])
     elsif params[:min_price].present?
@@ -11,13 +23,14 @@ class ItemsController < ApplicationController
       @items = @items.where("price <= ?", params[:max_price])
     end
       # Condition filter, ignore "All"
-    if params[:condition].present? && params[:condition] != 'All'
+    if params[:condition].present? && params[:condition] != 'ALL'
       @items = @items.where(condition: params[:condition])
     end
 
     if params[:query].present?
       @items = @items.where("name ILIKE :query OR description ILIKE :query", query: "%#{params[:query]}%")
     end
+
   end
 
   def show

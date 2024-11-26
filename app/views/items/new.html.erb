@@ -27,7 +27,7 @@
 
   <div>
     <%= form.label :condition %>
-    <%= form.select :condition, options_for_select(["NEW", "USED", "FAIR"]), {}, class: "form-control", required: true %>
+    <%= form.select :condition, options_for_select(["NEW", "USED - LIKE NEW", "USED - GOOD", "USED - ACCEPTABLE"]), {}, class: "form-control", required: true %>
     <% @item.errors.full_messages_for(:condition).each do |message| %>
       <div><%= message %></div>
     <% end %>
