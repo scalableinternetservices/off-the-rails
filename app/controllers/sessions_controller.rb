@@ -1,4 +1,5 @@
 class SessionsController < ApplicationController
+    skip_forgery_protection
     def new
         #render new log in here
     end
