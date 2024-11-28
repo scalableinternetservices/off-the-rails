@@ -6,7 +6,7 @@
   </clients>
 
   <servers>
-    <server host="http://off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com" port="443" type="ssl"></server>
+    <server host="http://new-off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com/login" port="443" type="ssl"></server>
   </servers>
 
   <load>
