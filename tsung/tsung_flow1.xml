@@ -16,12 +16,12 @@
     <arrivalphase phase="2" duration="5" unit="second">
       <users arrivalrate="2" unit="second"></users>
     </arrivalphase>
-    <!-- <arrivalphase phase="3" duration="5" unit="second">
+    <arrivalphase phase="3" duration="5" unit="second">
       <users arrivalrate="4" unit="second"></users>
     </arrivalphase>
     <arrivalphase phase="4" duration="5" unit="second">
       <users arrivalrate="8" unit="second"></users>
-    </arrivalphase> -->
+    </arrivalphase>
     <!-- <arrivalphase phase="5" duration="5" unit="second">
       <users arrivalrate="16" unit="second"></users>
     </arrivalphase>
@@ -61,8 +61,8 @@
       <!-- Step 2: Login with CSRF Token -->
       <request subst="true">
         <http url="/login" version="1.1"
-              contents="username=%%_username%%&amp;commit=Login"
-              content_type="application/x-www-form-urlencoded" method="POST">
+              contents="name=%%_username%%&amp;commit=Login"
+              content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
         </http>
       </request>
       
