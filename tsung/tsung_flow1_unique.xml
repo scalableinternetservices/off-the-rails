@@ -1,0 +1,84 @@
+<?xml version="1.0"?>
+<!DOCTYPE tsung SYSTEM "/usr/local/share/tsung/tsung-1.0.dtd" [] >
+<tsung loglevel="notice">
+  <clients>
+    <client host="localhost" maxusers="32768" use_controller_vm="true" />
+  </clients>
+
+  <servers>
+    <server host="new-off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com" port="80" type="tcp"></server>
+  </servers>
+
+  <load>
+    <arrivalphase phase="1" duration="1" unit="minute">
+      <users arrivalrate="1" unit="second"></users>
+    </arrivalphase>
+    <arrivalphase phase="2" duration="1" unit="minute">
+      <users arrivalrate="2" unit="second"></users>
+    </arrivalphase>
+    <arrivalphase phase="3" duration="1" unit="minute">
+      <users arrivalrate="4" unit="second"></users>
+    </arrivalphase>
+    <arrivalphase phase="4" duration="1" unit="minute">
+      <users arrivalrate="8" unit="second"></users>
+    </arrivalphase>
+    <arrivalphase phase="5" duration="1" unit="minute">
+      <users arrivalrate="16" unit="second"></users>
+    </arrivalphase>
+    <arrivalphase phase="6" duration="1" unit="minute">
+      <users arrivalrate="32" unit="second"></users>
+    </arrivalphase>
+    <arrivalphase phase="7" duration="1" unit="minute">
+      <users arrivalrate="64" unit="second"></users>
+    </arrivalphase>
+    <arrivalphase phase="8" duration="1" unit="minute">
+      <users arrivalrate="128" unit="second"></users>
+    </arrivalphase>
+  </load>
+
+  <options>
+    <!-- Set connection timeout to 2 seconds -->
+    <option name="global_ack_timeout" value="2000"></option>
+    <option name="file_server" id="usernames" value="baby_names.csv"/>
+  </options>
+  <sessions>
+  <!-- Basic Login/logout Workflow -->
+    <session name="login_workflow" type="ts_http" weight="1">
+      <!-- create a random number to make a unique 'username' -->
+      <setdynvars sourcetype="random_number" start="1000" end="9999999">
+        <var name="username" />
+      </setdynvars>
+      <setdynvars sourcetype="eval" code="fun( {Pid, DynVars} ) ->
+        io:format([126, $p, 126, $n, 126, $n], [DynVars]),
+        ok end.">
+        <var name="dump" />
+      </setdynvars>
+      
+      <!-- Step 1: Retrieve CSRF Token -->
+      <request>
+        <http method="GET" url="/login" version="1.1"></http>
+      </request>
+  
+      <!-- Step 2: Login with CSRF Token -->
+      <request subst="true">
+        <http url="/login" version="1.1"
+              contents="name=%%_username%%&amp;commit=Login"
+              content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
+        </http>
+      </request>
+      
+      <!-- Step 2: View all listings
+      <request>
+        <http method="GET" url="" version="1.1"></http>
+      </request> -->
+
+      <!-- Step 3: Wait 1 second -->
+      <thinktime value="1"></thinktime>
+
+      <!-- Step 4: Logout -->
+      <request>
+        <http method="GET" url="/logout" version="1.1"></http>
+      </request>
+    </session>
+  </sessions>
+</tsung>
