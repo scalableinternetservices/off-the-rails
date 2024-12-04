@@ -66,11 +66,21 @@
 <!-- Pagination-->
 <div>
 <% if params[:page].to_i > 0 %>
-  <%= link_to "Previous Page", root_path(page: params[:page].to_i - 1) %>
+  <%= link_to "Previous Page", root_path(page: params[:page].to_i - 1,
+                                     order_by: params[:order_by],
+                                     condition: params[:condition],
+                                     query: params[:query],
+                                     min_price: params[:min_price],
+                                     max_price: params[:max_price]) %>
 <% end %>
 ||
 <% if @items.size == @per_page %>
-  <%= link_to "Next Page", root_path(page: params[:page].to_i + 1) %>
+  <%= link_to "Next Page", root_path(page: params[:page].to_i + 1,
+                                     order_by: params[:order_by],
+                                     condition: params[:condition],
+                                     query: params[:query],
+                                     min_price: params[:min_price],
+                                     max_price: params[:max_price]) %>
 <% end %>
 </div>
 
