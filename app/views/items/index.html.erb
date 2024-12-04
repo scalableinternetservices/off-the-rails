@@ -63,6 +63,17 @@
 
 <div id='separator'></div>
 
+<!-- Pagination-->
+<div>
+<% if params[:page].to_i > 0 %>
+  <%= link_to "Previous Page", root_path(page: params[:page].to_i - 1) %>
+<% end %>
+||
+<% if @items.size == @per_page %>
+  <%= link_to "Next Page", root_path(page: params[:page].to_i + 1) %>
+<% end %>
+</div>
+
 <!-- Items Listing -->
 <div class="center-display">
   <div class="items-grid">

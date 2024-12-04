@@ -2,6 +2,10 @@ class ItemsController < ApplicationController
   before_action :check_logged_in 
   
   def index
+    page = params[:page].to_i || 0
+    @per_page = 30  # Number of records per page
+    offset = page * @per_page
+    
     case params[:order_by]
     when 'created_at_desc'
       @items = Item.where(order_id: nil).order(created_at: :desc)  # Sort by date listed, newest first
@@ -31,6 +35,7 @@ class ItemsController < ApplicationController
       @items = @items.where("name ILIKE :query OR description ILIKE :query", query: "%#{params[:query]}%")
     end
 
+    @items = @items.limit(@per_page).offset(offset)
   end
 
   def show
