@@ -16,13 +16,13 @@
     <arrivalphase phase="2" duration="5" unit="second">
       <users arrivalrate="2" unit="second"></users>
     </arrivalphase>
-    <arrivalphase phase="3" duration="5" unit="second">
+<!--     <arrivalphase phase="3" duration="5" unit="second">
       <users arrivalrate="4" unit="second"></users>
     </arrivalphase>
     <arrivalphase phase="4" duration="5" unit="second">
       <users arrivalrate="8" unit="second"></users>
     </arrivalphase>
-    <!-- <arrivalphase phase="5" duration="5" unit="second">
+    <arrivalphase phase="5" duration="5" unit="second">
       <users arrivalrate="16" unit="second"></users>
     </arrivalphase>
     <arrivalphase phase="6" duration="5" unit="second">
@@ -44,73 +44,107 @@
   <sessions>
   <!-- Basic Login/logout Workflow -->
     <session name="login_workflow" type="ts_http" weight="1">
-      <!-- <setdynvars sourcetype="file" fileid="usernames" delimiter="," order="iter">
-        <var name="username" />
-      </setdynvars> -->
+
       <setdynvars sourcetype="random_number" start="5000000" end="9999999">
         <var name="username" />
       </setdynvars>
-      <setdynvars sourcetype="eval" code="fun( {Pid, DynVars} ) ->
-        io:format([126, $p, 126, $n, 126, $n], [DynVars]),
-        ok end.">
-        <var name="dump" />
-      </setdynvars>
-      <!-- <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> case lists:keyfind(my_counter, 1, DynVars) of false -> {ok, [{my_counter, 1}]}; {_, N} -> {ok, [{my_counter, N + 1}]} end end.">
-        <var name="counter" />
-      </setdynvars> -->
 
-      <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> io:format([126, $p, 126, $n, 126, $n], [DynVars]), ok end.">
-        <var name="dump" />
-      </setdynvars>
-      <for from="1" to="1000" incr="1" var="counter">
-        <setdynvars sourcetype="eval" code="
-          fun({Pid, DynVars}) ->
-            CounterValue = lists:keyfind(counter, 1, DynVars),
-            io:format('~nCounter Value: ~p~n', [CounterValue]),
-            ok
-          end.">
-          <var name="log_counter" />
+        <setdynvars sourcetype="eval" code="fun( {Pid, DynVars} ) ->
+          io:format([126, $p, 126, $n, 126, $n], [DynVars]),
+          ok end.">
+          <var name="dump" />
         </setdynvars>
-        <!-- <log expression="Counter Value: %%_counter%%" /> -->
+
+        <!-- Login -->
         <request>
           <http method="GET" url="/login" version="1.1"></http>
         </request>
     
-        <!-- Step 2: Login with CSRF Token -->
         <request subst="true">
           <http url="/login" version="1.1"
                 contents="name=%%_username%%&amp;commit=Login"
                 content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
           </http>
         </request>
+
         <thinktime value="2"></thinktime>
+
+        <!-- Filter search/query by price, keyword, and condition -->
         <request>
             <http method="GET" url="/items?query=test&amp;min_price=1&amp;max_price=10&amp;condition=NEW&amp;commit=Search" version="1.1"></http>
         </request>
+
         <thinktime value="3"></thinktime>
+
+        <!-- Also sort the items by price -->
         <request>
             <http method="GET" url="items?order_by=price_asc&amp;commit=Sort" version="1.1"></http>
         </request>
+
         <thinktime value="2"></thinktime>
+
+        <!-- Add an item to the cart -->
         <request subst="true">
-            <http url="/carts/add_items/%%_counter%%" version="1.1"
+            <http url="/carts/add_item/%%_tsung_userid%%" version="1.1"
                 content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
             </http>
         </request> 
+
+        <thinktime value="2"></thinktime>
+
+        <!-- Checkout -->
         <request subst="true">
-            <http url="orders" version="1.1"
+            <http url="/orders" version="1.1"
                 content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
             </http>
         </request>
 
-        <!-- <request>
-            <http method="GET" url="/" version="1.1"></http>
-        </request> -->
         <thinktime value="2"></thinktime>
+
+        <!-- View profile -->
+        <request>
+            <http method="GET" url="/profile" version="1.1"></http>
+        </request>
+
+        <thinktime value="2"></thinktime>
+
+        <!-- View placed orders -->
+        <request>
+            <http method="GET" url="/orders" version="1.1"></http>
+        </request>
+
+        <thinktime value="2"></thinktime>
+
+        <!-- Leave a rating on the order -->        
+        <request subst="true">
+            <http url="/items/%%_tsung_userid%%/ratings" version="1.1"
+                contents="rating%5Brating%5D=4&amp;rating%5Bdreview%5D=thisIsAReview
+                &amp;commit=Submit+Rating+and+Review"
+                content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
+            </http>
+        </request> 
+
+        <thinktime value="2"></thinktime>
+
+        <!-- Go back to profile -->
+        <request>
+            <http method="GET" url="/profile" version="1.1"></http>
+        </request>
+
+        <thinktime value="2"></thinktime>
+
+        <!-- View ratings you gave -->
+        <request>
+            <http method="GET" url="/ratings" version="1.1"></http>
+        </request>
+
+        <thinktime value="2"></thinktime>
+
+        <!-- Logout -->
         <request>
             <http method="GET" url="/logout" version="1.1"></http>
         </request>
-      </for>
+
     </session>
   </sessions>
 </tsung>
