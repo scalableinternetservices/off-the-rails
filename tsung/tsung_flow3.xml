@@ -6,7 +6,7 @@
   </clients>
 
   <servers>
-    <server host="new-off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com" port="80" type="tcp"></server>
+    <server host="new2-off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com" port="80" type="tcp"></server>
   </servers>
 
   <load>
@@ -55,52 +55,62 @@
         ok end.">
         <var name="dump" />
       </setdynvars>
-      <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> case lists:keyfind(my_counter, 1, DynVars) of false -> {ok, [{my_counter, 1}]}; {_, N} -> {ok, [{my_counter, N + 1}]} end end.">
+      <!-- <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> case lists:keyfind(my_counter, 1, DynVars) of false -> {ok, [{my_counter, 1}]}; {_, N} -> {ok, [{my_counter, N + 1}]} end end.">
         <var name="counter" />
-      </setdynvars>
+      </setdynvars> -->
 
       <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> io:format([126, $p, 126, $n, 126, $n], [DynVars]), ok end.">
         <var name="dump" />
       </setdynvars>
-      <request>
-        <http method="GET" url="/login" version="1.1"></http>
-      </request>
-  
-      <!-- Step 2: Login with CSRF Token -->
-      <request subst="true">
-        <http url="/login" version="1.1"
-              contents="name=%%_username%%&amp;commit=Login"
-              content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
-        </http>
-      </request>
-    <thinktime value="2"></thinktime>
-    <request>
-        <http method="GET" url="/items?query=test&amp;min_price=1&amp;max_price=10&amp;condition=NEW&amp;commit=Search" version="1.1"></http>
-    </request>
-    <thinktime value="3"></thinktime>
-    <request>
-        <http method="GET" url="items?order_by=price_asc&amp;commit=Sort" version="1.1"></http>
-    </request>
-    <thinktime value="2"></thinktime>
-    <request>
-    <request subst="true">
-        <http url="/carts/add_items/_counter" version="1.1"
-            content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
-        </http>
-    </request> 
-    <request subst="true">
-        <http url="orders" version="1.1"
-            content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
-        </http>
-    </request>
+      <for from="1" to="1000" incr="1" var="counter">
+        <setdynvars sourcetype="eval" code="
+          fun({Pid, DynVars}) ->
+            CounterValue = lists:keyfind(counter, 1, DynVars),
+            io:format('~nCounter Value: ~p~n', [CounterValue]),
+            ok
+          end.">
+          <var name="log_counter" />
+        </setdynvars>
+        <!-- <log expression="Counter Value: %%_counter%%" /> -->
+        <request>
+          <http method="GET" url="/login" version="1.1"></http>
+        </request>
+    
+        <!-- Step 2: Login with CSRF Token -->
+        <request subst="true">
+          <http url="/login" version="1.1"
+                contents="name=%%_username%%&amp;commit=Login"
+                content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
+          </http>
+        </request>
+        <thinktime value="2"></thinktime>
+        <request>
+            <http method="GET" url="/items?query=test&amp;min_price=1&amp;max_price=10&amp;condition=NEW&amp;commit=Search" version="1.1"></http>
+        </request>
+        <thinktime value="3"></thinktime>
+        <request>
+            <http method="GET" url="items?order_by=price_asc&amp;commit=Sort" version="1.1"></http>
+        </request>
+        <thinktime value="2"></thinktime>
+        <request subst="true">
+            <http url="/carts/add_items/%%_counter%%" version="1.1"
+                content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
+            </http>
+        </request> 
+        <request subst="true">
+            <http url="orders" version="1.1"
+                content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
+            </http>
+        </request>
 
-    <!-- <request>
-        <http method="GET" url="/" version="1.1"></http>
-    </request> -->
-    <thinktime value="2"></thinktime>
-    <request>
-        <http method="GET" url="/logout" version="1.1"></http>
-    </request>
+        <!-- <request>
+            <http method="GET" url="/" version="1.1"></http>
+        </request> -->
+        <thinktime value="2"></thinktime>
+        <request>
+            <http method="GET" url="/logout" version="1.1"></http>
+        </request>
+      </for>
     </session>
   </sessions>
 </tsung>
