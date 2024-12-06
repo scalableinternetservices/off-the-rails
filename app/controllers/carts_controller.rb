@@ -24,7 +24,7 @@ class CartsController < ApplicationController
       redirect_to cart_path(@cart), notice: "Item added to your cart."
     end
   end
-  
+
 
   def remove_item
     cart_item = @cart.cart_items.find_by(item_id: params[:item_id])

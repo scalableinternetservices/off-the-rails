@@ -8,12 +8,12 @@ Rails.application.routes.draw do
   get '/login', to: 'sessions#new'
   post '/login', to: 'sessions#create'
   get '/logout', to: 'sessions#destroy'
+  post '/carts/add_item/:item_id', to: 'carts#add_item', as: 'add_item_to_cart'
 
   get '/profile', to: 'sessions#profile'
   resources :users
   resources :orders
   resources :carts, only: [:index, :show] do
-    post '/carts/add_item/:item_id', to: 'carts#add_item', as: 'add_item'
     delete 'remove_item/:item_id', to: 'carts#remove_item', as: 'remove_item'
   end
   resources :items do

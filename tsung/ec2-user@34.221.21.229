@@ -44,10 +44,7 @@
   <sessions>
   <!-- Basic Login/logout Workflow -->
     <session name="login_workflow" type="ts_http" weight="1">
-      <!-- <setdynvars sourcetype="file" fileid="usernames" delimiter="," order="iter">
-        <var name="username" />
-      </setdynvars> -->
-      <setdynvars sourcetype="random_number" start="5000000" end="9999999">
+      <setdynvars sourcetype="file" fileid="usernames" delimiter="," order="iter">
         <var name="username" />
       </setdynvars>
       <setdynvars sourcetype="eval" code="fun( {Pid, DynVars} ) ->
@@ -55,13 +52,8 @@
         ok end.">
         <var name="dump" />
       </setdynvars>
-      <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> case lists:keyfind(my_counter, 1, DynVars) of false -> {ok, [{my_counter, 1}]}; {_, N} -> {ok, [{my_counter, N + 1}]} end end.">
-        <var name="counter" />
-      </setdynvars>
-
-      <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> io:format([126, $p, 126, $n, 126, $n], [DynVars]), ok end.">
-        <var name="dump" />
-      </setdynvars>
+      
+      <!-- Step 1: Retrieve CSRF Token -->
       <request>
         <http method="GET" url="/login" version="1.1"></http>
       </request>
@@ -73,38 +65,19 @@
               content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
         </http>
       </request>
-    <thinktime value="2"></thinktime>
-    <request>
-        <http method="GET" url="/items?query=test&amp;min_price=1&amp;max_price=10&amp;condition=NEW&amp;commit=Search" version="1.1"></http>
-    </request>
-    <thinktime value="3"></thinktime>
-    <request>
-        <http method="GET" url="items?order_by=price_asc&amp;commit=Sort" version="1.1"></http>
-    </request>
-    <thinktime value="2"></thinktime>
-    <request>
-    <request subst="true">
-        <http url="/carts/add_items/_counter" version="1.1"
-            content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
-        </http>
-    </request> 
-    <request subst="true">
-        <http url="orders" version="1.1"
-            content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
-        </http>
-    </request>
+      
+      <!-- Step 2: View all listings
+      <request>
+        <http method="GET" url="" version="1.1"></http>
+      </request> -->
 
-    <!-- <request>
-        <http method="GET" url="/" version="1.1"></http>
-    </request> -->
-    <thinktime value="2"></thinktime>
-    <request>
+      <!-- Step 3: Wait 1 second -->
+      <!-- <thinktime value="1"></thinktime> -->
+
+      <!-- Step 4: Logout -->
+      <request>
         <http method="GET" url="/logout" version="1.1"></http>
-    </request>
+      </request>
     </session>
   </sessions>
 </tsung>
-
-
-
-      

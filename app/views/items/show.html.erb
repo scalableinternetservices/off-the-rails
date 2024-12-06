@@ -25,7 +25,7 @@
 <% elsif @item.user_id == current_user.id %>
   <p><strong>This is your item</strong></p>
 <% else %>
-  <%= button_to 'Add to Cart', cart_add_item_path(cart_id: current_cart.id, item_id: @item.id), method: :post %>
+  <%= button_to 'Add to Cart', add_item_to_cart_path(item_id: @item.id), method: :post %>
 <% end %>
 <div id='separator'></div> 
 
