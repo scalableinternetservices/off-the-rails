@@ -73,7 +73,7 @@
     </request>
     <thinktime value="2"></thinktime>
     <request subst="true">
-        <http url="/item/new" version="1.1"
+        <http url="carts/add_items/new" version="1.1"
             contents="item%5Bname%5D=coolItem&amp;item%5Bdescription%5D=somethingSomthingSomething
             &amp;item%5Bprice%5D=5&amp;item%5Bcondition%5D=NEW&amp;commit=Create+Item"
             content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
