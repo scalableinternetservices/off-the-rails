@@ -6,7 +6,7 @@
   </clients>
 
   <servers>
-    <server host="new2-off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com" port="80" type="tcp"></server>
+    <server host="new-off-the-rails.eba-kmjh8tvn.us-west-2.elasticbeanstalk.com" port="80" type="tcp"></server>
   </servers>
 
   <load>
@@ -16,7 +16,7 @@
     <arrivalphase phase="2" duration="5" unit="second">
       <users arrivalrate="2" unit="second"></users>
     </arrivalphase>
-<!--     <arrivalphase phase="3" duration="5" unit="second">
+    <arrivalphase phase="3" duration="5" unit="second">
       <users arrivalrate="4" unit="second"></users>
     </arrivalphase>
     <arrivalphase phase="4" duration="5" unit="second">
@@ -33,7 +33,7 @@
     </arrivalphase>
     <arrivalphase phase="8" duration="5" unit="second">
       <users arrivalrate="128" unit="second"></users>
-    </arrivalphase> -->
+    </arrivalphase>
   </load>
 
   <options>
@@ -78,7 +78,7 @@
 
         <!-- Also sort the items by price -->
         <request>
-            <http method="GET" url="items?order_by=price_asc&amp;commit=Sort" version="1.1"></http>
+            <http method="GET" url="/items?order_by=price_asc&amp;commit=Sort" version="1.1"></http>
         </request>
 
         <thinktime value="2"></thinktime>
