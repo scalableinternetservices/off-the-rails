@@ -52,6 +52,13 @@
         ok end.">
         <var name="dump" />
       </setdynvars>
+      <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> case lists:keyfind(my_counter, 1, DynVars) of false -> {ok, [{my_counter, 1}]}; {_, N} -> {ok, [{my_counter, N + 1}]} end end.">
+        <var name="counter" />
+      </setdynvars>
+
+      <setdynvars sourcetype="eval" code="fun({Pid, DynVars}) -> io:format([126, $p, 126, $n, 126, $n], [DynVars]), ok end.">
+        <var name="dump" />
+      </setdynvars>
       <request>
         <http method="GET" url="/login" version="1.1"></http>
       </request>
@@ -72,13 +79,20 @@
         <http method="GET" url="items?order_by=price_asc&amp;commit=Sort" version="1.1"></http>
     </request>
     <thinktime value="2"></thinktime>
-    <request subst="true">
-        <http url="carts/add_items/new" version="1.1"
+    <request>
+    <http method="GET" url="/cart" version="1.1">
+      <dyn_variable name="cart_id" re="&quot;cart_id&quot;:\s*(\d+)" />
+    </http>
+    </request>
+
+
+    <!-- <request subst="true">
+        <http url="carts/_counter/add_items/_counter" version="1.1"
             contents="item%5Bname%5D=coolItem&amp;item%5Bdescription%5D=somethingSomthingSomething
             &amp;item%5Bprice%5D=5&amp;item%5Bcondition%5D=NEW&amp;commit=Create+Item"
             content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
         </http>
-    </request>  
+    </request>   -->
     <!-- <request>
         <http method="GET" url="/" version="1.1"></http>
     </request> -->
