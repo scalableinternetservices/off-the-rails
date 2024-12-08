@@ -3,13 +3,15 @@
 <% if @cart_items.any? %>
   <div class="items-grid">
     <% @cart_items.each do |cart_item| %>
-      <div class="item-card">
-        <h3><%= link_to cart_item.item.name, item_path(cart_item.item) %></h3>
-        <p><strong>Description:</strong> <%= cart_item.item.description %></p>
-        <p><strong>Price:</strong> $<%= cart_item.item.price %></p>
-        <p><strong>Condition:</strong> <%= cart_item.item.condition %></p>
-        <%= button_to 'Remove from Cart', cart_remove_item_path(cart_id: @cart.id, item_id: cart_item.item.id), method: :delete %>
-      </div>
+      <% cache cart_item do %>
+        <div class="item-card">
+          <h3><%= link_to cart_item.item.name, item_path(cart_item.item) %></h3>
+          <p><strong>Description:</strong> <%= cart_item.item.description %></p>
+          <p><strong>Price:</strong> $<%= cart_item.item.price %></p>
+          <p><strong>Condition:</strong> <%= cart_item.item.condition %></p>
+          <%= button_to 'Remove from Cart', cart_remove_item_path(cart_id: @cart.id, item_id: cart_item.item.id), method: :delete %>
+        </div>
+      <% end %>
     <% end %>
   </div>
   <!-- Checkout Button -->
