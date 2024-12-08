@@ -88,27 +88,29 @@
 <div class="center-display">
   <div class="items-grid">
     <% @items.each do |item| %>
-      <div class="item-card">
-        <h3><%= link_to item.name, item %></h3>
-        <p><strong>Description:</strong> <%= item.description %></p>
-        <p><strong>Price:</strong> $<%= item.price %></p>
-        <p><strong>Condition:</strong> <%= item.condition %></p>
-        <p><strong>Seller:</strong> <%= item.user.name %></p>
+      <% cache item do %>
+        <div class="item-card">
+          <h3><%= link_to item.name, item %></h3>
+          <p><strong>Description:</strong> <%= item.description %></p>
+          <p><strong>Price:</strong> $<%= item.price %></p>
+          <p><strong>Condition:</strong> <%= item.condition %></p>
+          <p><strong>Seller:</strong> <%= item.user.name %></p>
 
-        <div class="cart-or-buy">
-        <% if current_cart.items.include?(item) %>
-          <p><strong>Already in Cart</strong></p>
-        <% elsif item.user_id == current_user.id %>
-          <p><strong>This is your item</strong></p>
-        <% else %>
-          <%= button_to 'Add to Cart', add_item_to_cart_path(item_id: item.id), method: :post %>
-        <% end %>
+          <div class="cart-or-buy">
+          <% if current_cart.items.include?(item) %>
+            <p><strong>Already in Cart</strong></p>
+          <% elsif item.user_id == current_user.id %>
+            <p><strong>This is your item</strong></p>
+          <% else %>
+            <%= button_to 'Add to Cart', add_item_to_cart_path(item_id: item.id), method: :post %>
+          <% end %>
+          </div>
+          
+          <div class="list-date">
+            Listed <%= item.created_at.strftime('%B %d, %Y at %I:%M %p') %>
+          </div>
         </div>
-        
-        <div class="list-date">
-          Listed <%= item.created_at.strftime('%B %d, %Y at %I:%M %p') %>
-        </div>
-      </div>
+      <% end %>
     <% end %>
   </div>
 </div>

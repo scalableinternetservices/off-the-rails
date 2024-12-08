@@ -34,6 +34,9 @@ Rails.application.configure do
   end
 
   config.action_controller.allow_forgery_protection = false
+  
+  # allow caching
+  config.action_controller.perform_caching = true 
 
   # Store uploaded files on the local file system (see config/storage.yml for options).
   config.active_storage.service = :local
