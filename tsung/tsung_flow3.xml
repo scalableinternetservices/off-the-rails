@@ -118,7 +118,7 @@
         <!-- Leave a rating on the order -->        
         <request subst="true">
             <http url="/items/%%_tsung_userid%%/ratings" version="1.1"
-                contents="rating%5Brating%5D=4&amp;rating%5Bdreview%5D=thisIsAReview
+                contents="rating%5Brating%5D=4&amp;rating%5Breview%5D=thisIsAReview
                 &amp;commit=Submit+Rating+and+Review"
                 content_type="application/x-www-form-urlencoded;charset=UTF-8" method="POST">
             </http>
