@@ -49,7 +49,7 @@
   </options>
   <sessions>
   <!-- Basic Login/logout Workflow -->
-    <session name="login_workflow" type="ts_http" weight="1">
+    <session name="create_listings_workflow" type="ts_http" weight="1">
       <setdynvars sourcetype="file" fileid="usernames" delimiter="," order="iter">
         <var name="username" />
       </setdynvars>
