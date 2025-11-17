@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  conversation_id: 1
+  expert_id: 1
+  status: MyString
+  assigned_at: 2025-11-05 08:18:11
+  resolved_at: 2025-11-05 08:18:11
+  rating: 1
+
+two:
+  conversation_id: 1
+  expert_id: 1
+  status: MyString
+  assigned_at: 2025-11-05 08:18:11
+  resolved_at: 2025-11-05 08:18:11
+  rating: 1
