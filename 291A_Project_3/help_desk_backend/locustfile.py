@@ -174,22 +174,12 @@ class ChatBackend():
         return None  # Return None instead of False
     
     def send_message(self, user, convo_id):
-        # content = f"Message {random.randint(1, 10000) * random.randint(1, 10000)}"
-        # response = self.client.post(
-        #     "/messages",
-        #     json={"conversationId": convo_id, "content": content},
-        #     headers=self.auth_headers(user.get("auth_token")),
-        #     name="/messages"
-        # )
-        # return response.status_code == 200 or response.status_code == 201
-        if not convo_id:
-            return False
-        content = f"Message {random.randint(1, 1_000_000)}"
+        content = f"Message {random.randint(1, 10000) * random.randint(1, 10000)}"
         response = self.client.post(
             "/messages",
-            json={"conversationId": str(convo_id), "content": content},
+            json={"conversationId": convo_id, "content": content},
             headers=self.auth_headers(user.get("auth_token")),
-            name="/messages#create"
+            name="/messages"
         )
         return response.status_code == 200 or response.status_code == 201
 
@@ -498,7 +488,63 @@ class ExpertUser2(HttpUser, ChatBackend):
                 name="/expert/profile (create)"
             )
 
-    # Polling expert queue
+    # # Polling expert queue
+    # @task(5)
+    # def poll_expert_queue(self):
+    #     """Poll for updates, claim new conversations, and manage ongoing ones."""
+
+    #     updated = self.check_expert_queue_updates(self.user)
+    #     if not updated:
+    #         return
+
+    #     # Fetch full expert queue
+    #     response = self.client.get(
+    #         "/expert/queue",
+    #         headers=self.auth_headers(self.user["auth_token"]),
+    #         name="/expert/queue"
+    #     )
+    #     if response.status_code != 200:
+    #         return
+
+    #     data = response.json()
+    #     waiting = data.get("waitingConversations", [])
+    #     assigned = data.get("assignedConversations", [])
+
+    #     for convo in assigned:
+    #         cid = convo["id"]
+    #         if cid not in self.active_conversations:
+    #             self.active_conversations[cid] = {
+    #                 "last_reply": datetime.utcnow()
+    #             }
+
+    #     # Claim new conversations if available
+    #     if waiting:
+    #         num_to_claim = min(len(waiting), random.randint(1, 2))
+    #         for convo in waiting[:num_to_claim]:
+    #             self.claim_conversation(convo["id"])
+
+    #     self.check_message_updates(self.user)
+    #     self.check_conversation_updates(self.user)
+    #     # Manage existing conversations (reply occasionally)
+    #     for convo_id in list(self.active_conversations):
+    #         self.reply_to_conversation(convo_id)
+
+    #     self.last_check_time = datetime.utcnow()
+
+    # # Claim conversation
+    # def claim_conversation(self, conversation_id):
+    #     response = self.client.post(
+    #         f"/expert/conversations/{conversation_id}/claim",
+    #         headers=self.auth_headers(self.user["auth_token"]),
+    #         name="/expert/conversations/claim"
+    #     )
+
+    #     if response.status_code == 200:
+    #         # Track new claimed conversation
+    #         self.active_conversations[conversation_id] = {
+    #             "last_reply": datetime.utcnow()
+    #         }
+# Polling expert queue
     @task(5)
     def poll_expert_queue(self):
         """Poll for updates, claim new conversations, and manage ongoing ones."""
@@ -531,10 +577,12 @@ class ExpertUser2(HttpUser, ChatBackend):
         if waiting:
             num_to_claim = min(len(waiting), random.randint(1, 2))
             for convo in waiting[:num_to_claim]:
+                # Try to claim, but don't fail if another expert got it first
                 self.claim_conversation(convo["id"])
 
         self.check_message_updates(self.user)
         self.check_conversation_updates(self.user)
+        
         # Manage existing conversations (reply occasionally)
         for convo_id in list(self.active_conversations):
             self.reply_to_conversation(convo_id)
@@ -549,11 +597,20 @@ class ExpertUser2(HttpUser, ChatBackend):
             name="/expert/conversations/claim"
         )
 
+        # Only track if claim was successful
         if response.status_code == 200:
-            # Track new claimed conversation
             self.active_conversations[conversation_id] = {
                 "last_reply": datetime.utcnow()
             }
+            return True
+        elif response.status_code == 409:  # Conflict - already claimed by another expert
+            # This is expected behavior in a load test, not an error
+            return False
+        elif response.status_code == 404:  # Conversation doesn't exist
+            return False
+        else:
+            # Unexpected error, but don't crash
+            return False
 
     def reply_to_conversation(self, convo_id):
         convo_state = self.active_conversations.get(convo_id)
