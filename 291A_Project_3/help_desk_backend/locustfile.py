@@ -301,3 +301,198 @@ class ActiveUser(HttpUser, ChatBackend):
 # class ExpertUser(HttpUser, ChatBackend):
 #     weight = 7
 #     wait_time = between(5, 10)
+
+# NOTE: Jonathan Cheng code testing
+class InitiatorUser(HttpUser, ChatBackend):
+    """
+    Persona: Regular user (initiator) who creates conversations and waits for expert help.
+    
+    Behavior:
+    - Creates new conversations seeking expert assistance
+    - Sends messages describing their problem
+    - Checks for expert responses
+    - Polls for updates while waiting
+    - Reads and responds to expert messages
+    """
+    weight = 3
+    wait_time = between(3, 10)
+
+    def on_start(self):
+        """Initialize user - register or login."""
+        self.last_check_time = None
+        username = user_name_generator.generate_username()
+        password = username
+        self.user = self.login(username, password) or self.register(username, password, is_expert=False)
+        if not self.user:
+            raise Exception(f"Failed to login or register user {username}")
+        
+        self.my_conversations = []
+
+    @task(3)
+    def create_conversation_and_send_message(self):
+        """Create a new conversation and send initial message."""
+        conversation_id = self.create_convo(self.user)
+        if conversation_id:
+            self.my_conversations.append(conversation_id)
+            # Send initial message
+            self.send_message(self.user, conversation_id)
+    
+    @task(5)
+    def check_for_responses(self):
+        """Check conversations for new messages from experts."""
+        if self.my_conversations:
+            conversation_id = random.choice(self.my_conversations)
+            response = self.client.get(
+                f"/conversations/{conversation_id}/messages",
+                headers=self.auth_headers(self.user.get("auth_token")),
+                name="/conversations/[id]/messages"
+            )
+        elif user_store.conversations:
+            conversation_id = user_store.get_random_convo()
+            if conversation_id:
+                response = self.client.get(
+                    f"/conversations/{conversation_id}/messages",
+                    headers=self.auth_headers(self.user.get("auth_token")),
+                    name="/conversations/[id]/messages"
+                )
+    
+    @task(4)
+    def respond_to_expert(self):
+        """Send a follow-up message in an existing conversation."""
+        conversation_id = (random.choice(self.my_conversations) if self.my_conversations 
+                          else user_store.get_random_convo())
+        if conversation_id:
+            self.send_message(self.user, conversation_id)
+    
+    @task(2)
+    def browse_my_conversations(self):
+        """Browse the user's conversation list."""
+        response = self.client.get(
+            "/conversations",
+            headers=self.auth_headers(self.user.get("auth_token")),
+            name="/conversations"
+        )
+        
+        if response.status_code == 200:
+            conversations = response.json()
+            self.my_conversations = [c.get("id") for c in conversations if c.get("id")]
+    
+    @task(6)
+    def poll_for_updates(self):
+        """Poll for updates (conversations and messages)."""
+        self.check_conversation_updates(self.user)
+        self.check_message_updates(self.user)
+        self.last_check_time = datetime.utcnow()
+
+
+class ExpertUser2(HttpUser, ChatBackend):
+    """
+    Persona: Expert user who monitors the queue, claims conversations, and helps initiators.
+    
+    Behavior:
+    - Monitors expert queue for waiting conversations
+    - Claims conversations from the queue
+    - Responds to initiator messages
+    - Manages multiple active conversations
+    - Polls for updates in assigned conversations
+    - Occasionally unclaims conversations when done
+    """
+    weight = 2
+    wait_time = between(2, 8)
+
+    def on_start(self):
+        """Initialize expert user."""
+        self.last_check_time = None
+        username = user_name_generator.generate_username() + "_expert"
+        password = username
+        self.user = self.login(username, password) or self.register(username, password, is_expert=True)
+        if not self.user:
+            raise Exception(f"Failed to login or register expert {username}")
+        
+        self.my_claimed_conversations = []
+    
+    @task(6)
+    def monitor_expert_queue(self):
+        """Check the expert queue for waiting conversations."""
+        response = self.client.get(
+            "/expert/queue",
+            headers=self.auth_headers(self.user.get("auth_token")),
+            name="/expert/queue"
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            assigned = data.get("assignedConversations", [])
+            
+            # Update local tracking
+            self.my_claimed_conversations = [c.get("id") for c in assigned if c.get("id")]
+    
+    @task(5)
+    def claim_waiting_conversation(self):
+        """Claim a conversation from the waiting queue."""
+        conversation_id = user_store.get_waiting_convo()
+        if conversation_id:
+            response = self.client.post(
+                f"/expert/conversations/{conversation_id}/claim",
+                headers=self.auth_headers(self.user.get("auth_token")),
+                name="/expert/conversations/[id]/claim"
+            )
+            
+            if response.status_code == 200:
+                user_store.mark_convo_claimed(conversation_id)
+                self.my_claimed_conversations.append(conversation_id)
+                
+                # Send initial expert response
+                self.send_message(self.user, conversation_id)
+    
+    @task(7)
+    def respond_to_initiator(self):
+        """Send a response message in a claimed conversation."""
+        if not self.my_claimed_conversations:
+            return
+        
+        conversation_id = random.choice(self.my_claimed_conversations)
+        self.send_message(self.user, conversation_id)
+    
+    @task(4)
+    def read_conversation_messages(self):
+        """Read messages from an assigned conversation."""
+        if not self.my_claimed_conversations:
+            return
+        
+        conversation_id = random.choice(self.my_claimed_conversations)
+        response = self.client.get(
+            f"/conversations/{conversation_id}/messages",
+            headers=self.auth_headers(self.user.get("auth_token")),
+            name="/conversations/[id]/messages"
+        )
+    
+    @task(1)
+    def unclaim_conversation(self):
+        """Unclaim a conversation (mark as resolved)."""
+        if not self.my_claimed_conversations:
+            return
+        
+        # Only unclaim with 30% probability to keep some active
+        if random.random() > 0.3:
+            return
+        
+        conversation_id = random.choice(self.my_claimed_conversations)
+        response = self.client.post(
+            f"/expert/conversations/{conversation_id}/unclaim",
+            headers=self.auth_headers(self.user.get("auth_token")),
+            name="/expert/conversations/[id]/unclaim"
+        )
+        
+        if response.status_code == 200:
+            self.my_claimed_conversations.remove(conversation_id)
+            # Put back in waiting queue
+            user_store.add_convo(conversation_id, status='waiting')
+    
+    @task(3)
+    def poll_expert_updates(self):
+        """Poll for expert queue updates."""
+        self.check_expert_queue_updates(self.user)
+        self.check_conversation_updates(self.user)
+        self.check_message_updates(self.user)
+        self.last_check_time = datetime.utcnow()
