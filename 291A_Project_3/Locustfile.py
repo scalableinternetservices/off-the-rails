@@ -230,4 +230,63 @@ class NewUser(HttpUser, ChatBackend):
         self.last_check_time = datetime.utcnow()
 
 
+class ActiveUser(HttpUser, ChatBackend):
+    """
+    Persona: Existing active user.
+    Logs as a pre-registered user, creates conversations,
+    sends messages, browses existing convos.
+    """
+    weight = 5
+    wait_time = between(1, 3)
 
+    def on_start(self):
+        self.last_check_time = None
+
+        # Choose an existing user from store.
+        # If no users exist yet, create one.
+        try:
+            self.user = user_store.get_random_user()
+        except Exception:
+            # fallback if no users exist yet
+            username = user_name_generator.generate_username()
+            password = username
+            self.user = self.register(username, password)
+
+        if not self.user:
+            raise Exception("ActiveUser could not acquire or create a valid user")
+
+        # create an initial convo
+        self.create_convo(self.user)
+
+    @task(5)
+    def create_conversation(self):
+        # Frequent behavior: create new conversations
+        self.create_convo(self.user)
+
+    @task(10)
+    def post_message(self):
+        # Post messages in random existing conversations
+        cid = user_store.get_random_convo()
+        if cid:
+            self.send_message(self.user, cid)
+        return
+
+    @task(3)
+    def poll_updates(self):
+        # Actively browse updates
+        self.check_message_updates(self.user)
+        self.check_conversation_updates(self.user)
+        self.last_check_time = datetime.utcnow()
+
+    # @task(2)
+    # def read_random_conversation(self):
+    #     # Simulate navigating to a conversation page
+    #     cid = user_store.get_random_convo()
+    #     if not cid:
+    #         return
+    #     response = self.client.get(
+    #         f"/conversations/{cid}",
+    #         headers=self.auth_headers(self.user.get("auth_token")),
+    #         name="/conversations#show"
+    #     )
+    #     return response.status_code == 200
