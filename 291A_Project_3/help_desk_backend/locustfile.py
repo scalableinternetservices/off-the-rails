@@ -584,9 +584,9 @@ class ExpertUser2(HttpUser, ChatBackend):
     # Claim conversation
     def claim_conversation(self, conversation_id):
         response = self.client.post(
-            f"/expert/queue/{conversation_id}/claim",
+            f"/expert/conversations/{conversation_id}/claim",
             headers=self.auth_headers(self.user["auth_token"]),
-            name="/expert/claim"
+            name="/expert/conversations/claim"
         )
 
         if response.status_code == 200:
