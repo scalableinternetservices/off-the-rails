@@ -113,12 +113,22 @@ class ChatBackend():
         return False
     
     def send_message(self, user, convo_id):
-        content = f"Message {random.randint(1, 10000) * random.randint(1, 10000)}"
+        # content = f"Message {random.randint(1, 10000) * random.randint(1, 10000)}"
+        # response = self.client.post(
+        #     "/messages",
+        #     json={"conversationId": convo_id, "content": content},
+        #     headers=self.auth_headers(user.get("auth_token")),
+        #     name="/messages"
+        # )
+        # return response.status_code == 200 or response.status_code == 201
+        if not convo_id:
+            return False
+        content = f"Message {random.randint(1, 1_000_000)}"
         response = self.client.post(
             "/messages",
-            json={"conversationId": convo_id, "content": content},
+            json={"conversationId": str(convo_id), "content": content},
             headers=self.auth_headers(user.get("auth_token")),
-            name="/messages"
+            name="/messages#create"
         )
         return response.status_code == 200 or response.status_code == 201
 
@@ -464,7 +474,7 @@ class ExpertUser2(HttpUser, ChatBackend):
         self.check_conversation_updates(self.user)
         # Manage existing conversations (reply occasionally)
         for convo_id in list(self.active_conversations):
-            self.maybe_reply_to_conversation(convo_id)
+            self.reply_to_conversation(convo_id)
 
         self.last_check_time = datetime.utcnow()
 
@@ -482,7 +492,7 @@ class ExpertUser2(HttpUser, ChatBackend):
                 "last_reply": datetime.utcnow()
             }
 
-    def maybe_reply_to_conversation(self, convo_id):
+    def reply_to_conversation(self, convo_id):
         convo_state = self.active_conversations.get(convo_id)
         if not convo_state:
             return
