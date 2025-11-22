@@ -104,7 +104,7 @@ class ChatBackend():
             "/conversations",
             json={"title": title},
             headers=self.auth_headers(user.get("auth_token")),
-            name="/conversations#create"
+            name="/conversations"
         )
         if response.status.code == 200 or response.status.code == 201:
             data = response.json()
@@ -118,9 +118,17 @@ class ChatBackend():
             "/messages",
             json={"conversationId": convo_id, "content": content},
             headers=self.auth_headers(user.get("auth_token")),
-            name="/messages#create"
+            name="/messages/create"
         )
         return response.status.code == 200 or response.status.code == 201
+
+    # def expert_queue(self, user):
+    #     response = self.client.get(
+    #         "/expert/queue",
+    #         headers=self.auth_headers(user.get("auth_token")),
+    #         name="/expert/queue"
+    #     )
+
 
 
     def check_conversation_updates(self, user):
@@ -229,7 +237,6 @@ class NewUser(HttpUser, ChatBackend):
         self.check_message_updates(self.user)
         self.last_check_time = datetime.utcnow()
 
-
 class ActiveUser(HttpUser, ChatBackend):
     """
     Persona: Existing active user.
@@ -278,15 +285,19 @@ class ActiveUser(HttpUser, ChatBackend):
         self.check_conversation_updates(self.user)
         self.last_check_time = datetime.utcnow()
 
-    @task(2)
-    def read_random_conversation(self):
-        # Simulate navigating to a conversation page
-        cid = user_store.get_random_convo()
-        if not cid:
-            return
-        response = self.client.get(
-            f"/conversations/{cid}",
-            headers=self.auth_headers(self.user.get("auth_token")),
-            name="/conversations#show"
-        )
-        return response.status_code == 200
+    # @task(2)
+    # def read_random_conversation(self):
+    #     # Simulate navigating to a conversation page
+    #     cid = user_store.get_random_convo()
+    #     if not cid:
+    #         return
+    #     response = self.client.get(
+    #         f"/conversations/{cid}",
+    #         headers=self.auth_headers(self.user.get("auth_token")),
+    #         name="/conversations#show"
+    #     )
+    #     return response.status_code == 200
+
+# class ExpertUser(HttpUser, ChatBackend):
+#     weight = 7
+#     wait_time = between(5, 10)
