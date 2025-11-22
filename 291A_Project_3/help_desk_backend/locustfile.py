@@ -118,7 +118,7 @@ class ChatBackend():
             "/messages",
             json={"conversationId": convo_id, "content": content},
             headers=self.auth_headers(user.get("auth_token")),
-            name="/messages/create"
+            name="/messages"
         )
         return response.status_code == 200 or response.status_code == 201
 
@@ -302,7 +302,7 @@ class ActiveUser(HttpUser, ChatBackend):
 #     weight = 7
 #     wait_time = between(5, 10)
 
-# NOTE: Jonathan Cheng code testing
+
 class InitiatorUser(HttpUser, ChatBackend):
     """
     Persona: Regular user (initiator) who creates conversations and waits for expert help.
@@ -345,7 +345,7 @@ class InitiatorUser(HttpUser, ChatBackend):
             response = self.client.get(
                 f"/conversations/{conversation_id}/messages",
                 headers=self.auth_headers(self.user.get("auth_token")),
-                name="/conversations/[id]/messages"
+                name="/conversations/{conversation_id}/messages"
             )
         elif user_store.conversations:
             conversation_id = user_store.get_random_convo()
@@ -353,7 +353,7 @@ class InitiatorUser(HttpUser, ChatBackend):
                 response = self.client.get(
                     f"/conversations/{conversation_id}/messages",
                     headers=self.auth_headers(self.user.get("auth_token")),
-                    name="/conversations/[id]/messages"
+                    name="/conversations/{conversation_id}/messages"
                 )
     
     @task(4)
@@ -435,7 +435,7 @@ class ExpertUser1(HttpUser, ChatBackend):
             response = self.client.post(
                 f"/expert/conversations/{conversation_id}/claim",
                 headers=self.auth_headers(self.user.get("auth_token")),
-                name="/expert/conversations/[id]/claim"
+                name="/expert/conversations/{conversation_id}/claim"
             )
             
             if response.status_code == 200:
