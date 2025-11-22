@@ -24,7 +24,7 @@ class UserNameGenerator:
         self.prime_number = prime_number or random.choice(self.PRIME_NUMBERS)
         self.current_index = -1
         self.max_users = max_users
-    
+
     def generate_username(self):
         self.current_index += 1
         return f"user_{(self.seed + self.current_index * self.prime_number) % self.max_users}"
@@ -34,6 +34,8 @@ class UserStore:
     def __init__(self):
         self.used_usernames = {}
         self.username_lock = threading.Lock()
+        self.conversations = []
+        self.convo_lock = threading.Lock()
 
     def get_random_user(self):
         with self.username_lock:
@@ -49,6 +51,11 @@ class UserStore:
             }
             return self.used_usernames[username]
 
+    def add_convo(self, convo_id):
+        with self.convo_lock:
+            self.conversations.append(convo_id)
+
+
 
 user_store = UserStore()
 user_name_generator = UserNameGenerator(max_users=MAX_USERS)
@@ -57,8 +64,8 @@ class ChatBackend():
     """
     Base class for all user personas.
     Provides common authentication and API interaction methods.
-    """        
-    
+    """
+
     def login(self, username, password):
         """Login an existing user."""
         response = self.client.post(
@@ -70,31 +77,92 @@ class ChatBackend():
             data = response.json()
             return user_store.store_user(username, data.get("token"), data.get("user", {}).get("id"))
         return None
-        
+
     def register(self, username, password):
-        """TODO"""
+        response = self.client.post(
+            "/auth/register",
+            json={"username": username, "password": password},
+            name="/auth/register"
+        )
+        if response.status.code == 200 or response.status.code == 201:
+            data = response.json()
+            return user_store.store_user(username, data.get("token"), data.get("user", {}).get("id"))
+        return None
+
+    def auth_headers(self, token):
+        return {"Authorization": f"Bearer {token}"}
+
+    def create_convo(self, user):
+        title = f"Conversation {random.randint(1, 10000) * random.randint(1, 10000)}"
+        response = self.client.post(
+            "/conversations",
+            json={"title": title},
+            headers=self.auth_headers(user.get("auth_token")),
+            name="/conversations#create"
+        )
+        if response.status.code == 200 or response.status.code == 201:
+            data = response.json()
+            user_store.add_convo(data["id"])
+            return True
+        return False
+    
+    def send_message(self, user, convo_id):
+        content = f"Message {random.randint(1, 10000) * random.randint(1, 10000)}"
+        response = self.client.post(
+            "/messages",
+            json={"conversationId": convo_id, "content": content},
+            headers=self.auth_headers(user.get("auth_token")),
+            name="/messages#create"
+        )
+        return response.status.code == 200 or response.status.code == 201
+
 
     def check_conversation_updates(self, user):
         """Check for conversation updates."""
         params = {"userId": user.get("user_id")}
         if self.last_check_time:
             params["since"] = self.last_check_time.isoformat()
-        
+
         response = self.client.get(
             "/api/conversations/updates",
             params=params,
-            headers=auth_headers(user.get("auth_token")),
+            headers=self.auth_headers(user.get("auth_token")),
             name="/api/conversations/updates"
         )
-        
+
         return response.status_code == 200
-    
+
     def check_message_updates(self, user):
-        """TODO"""
-    
+        """Check for message updates."""
+        params = {"userId": user.get("user_id")}
+        if self.last_check_time:
+            params["since"] = self.last_check_time.isoformat()
+
+        response = self.client.get(
+            "/api/messages/updates",
+            params=params,
+            headers=self.auth_headers(user.get("auth_token")),
+            name="/api/messages/updates"
+        )
+
+        return response.status_code == 200
+
+
     def check_expert_queue_updates(self, user):
-        """TODO"""
-    
+        """Check for expert queue updates"""
+        params = {"expertId": user.get("user_id")}
+        if self.last_check_time:
+            params["since"] = self.last_check_time.isoformat()
+
+        response = self.client.get(
+            "/api/expert-queue/updates",
+            params=params,
+            headers=self.auth_headers(user.get("auth_token")),
+            name="/api/expert-queue/updates"
+        )
+
+        return response.status_code == 200
+
 
 class IdleUser(HttpUser, ChatBackend):
     """
@@ -118,12 +186,12 @@ class IdleUser(HttpUser, ChatBackend):
         """Poll for all types of updates."""
         # Check conversation updates
         self.check_conversation_updates(self.user)
-        
+
         # Check message updates
         self.check_message_updates(self.user)
-        
+
         # Check expert queue updates
         self.check_expert_queue_updates(self.user)
-        
+
         # Update last check time
         self.last_check_time = datetime.utcnow()
