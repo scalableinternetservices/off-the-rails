@@ -1,23 +1,10 @@
 """
-Locust load test for chat-backend-rails application (Project 3).
+Locust load test for chat-backend-rails application.
 
-This test suite is designed to evaluate four scaling configurations:
-1. Single Instance: 1x m7g.medium app server + 1x db.m5.large DB
-2. Vertical Scaling: 1x m7g.large app server + 1x db.m5.large DB
-3. Horizontal Scaling 1: 4x m7g.medium app servers + 1x db.m5.large DB
-4. Horizontal Scaling 2: 4x m7g.medium app servers + 1x db.m5.xlarge DB
-
-The test simulates an expert chat system with realistic traffic patterns:
-- Initiators: Create conversations and message with experts
-- Experts: Claim waiting conversations and respond to initiators
-- Both user types poll for updates continuously
-
-This allows you to measure:
-- Throughput (requests/second) across configurations
-- Response times at different load levels
-- Database bottlenecks (single vs larger DB instance)
-- Application server bottlenecks (single vs multiple instances)
-- System breaking points (max concurrent users before degradation)
+User personas:
+1. New user registering for the first time (1 in every 10 users)
+2. Polling user that checks for updates every 5 seconds
+3. Active user that uses existing usernames to create conversations, post messages, and browse
 """
 
 import random
@@ -28,11 +15,8 @@ from locust import HttpUser, task, between
 
 # Configuration
 MAX_USERS = 10000
-EXPERT_RATIO = 0.2  # 20% of users are experts
-
 
 class UserNameGenerator:
-    """Generates unique usernames using prime number distribution."""
     PRIME_NUMBERS = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97]
 
     def __init__(self, max_users=MAX_USERS, seed=None, prime_number=None):
@@ -46,89 +30,78 @@ class UserNameGenerator:
         return f"user_{(self.seed + self.current_index * self.prime_number) % self.max_users}"
 
 
-class SharedState:
-    """Thread-safe storage for shared data across all simulated users."""
-    
+class UserStore:
     def __init__(self):
-        self.users = {}
-        self.experts = {}
+        self.used_usernames = {}
+        self.username_lock = threading.Lock()
         self.conversations = []
+        self.conversation_lock = threading.Lock()
+        self.experts = {}
+        self.expert_lock = threading.Lock()
         self.waiting_conversations = []
-        self.lock = threading.Lock()
+
+    def get_random_user(self):
+        with self.username_lock:
+            if not self.used_usernames:
+                return None
+            random_username = random.choice(list(self.used_usernames.keys()))
+            return self.used_usernames[random_username]
 
     def store_user(self, username, auth_token, user_id, is_expert=False):
-        """Store user credentials and role."""
-        with self.lock:
-            user_data = {
+        with self.username_lock:
+            self.used_usernames[username] = {
                 "username": username,
                 "auth_token": auth_token,
                 "user_id": user_id,
                 "is_expert": is_expert
             }
-            self.users[username] = user_data
             if is_expert:
-                self.experts[username] = user_data
-            return user_data
-
-    def get_random_expert(self):
-        """Get a random expert user."""
-        with self.lock:
-            if not self.experts:
-                return None
-            return random.choice(list(self.experts.values()))
-
-    def get_random_user(self):
-        """Get any random user."""
-        with self.lock:
-            if not self.users:
-                return None
-            return random.choice(list(self.users.values()))
+                with self.expert_lock:
+                    self.experts[username] = self.used_usernames[username]
+            return self.used_usernames[username]
     
     def add_conversation(self, conversation_id, status='waiting'):
-        """Store a conversation ID."""
-        with self.lock:
+        with self.conversation_lock:
             if conversation_id not in self.conversations:
                 self.conversations.append(conversation_id)
             if status == 'waiting' and conversation_id not in self.waiting_conversations:
                 self.waiting_conversations.append(conversation_id)
     
-    def mark_conversation_claimed(self, conversation_id):
-        """Remove conversation from waiting list."""
-        with self.lock:
-            if conversation_id in self.waiting_conversations:
-                self.waiting_conversations.remove(conversation_id)
-    
     def get_random_conversation(self):
-        """Get a random conversation ID."""
-        with self.lock:
+        with self.conversation_lock:
             if not self.conversations:
                 return None
             return random.choice(self.conversations)
     
     def get_waiting_conversation(self):
-        """Get a random waiting conversation."""
-        with self.lock:
+        with self.conversation_lock:
             if not self.waiting_conversations:
                 return None
             return random.choice(self.waiting_conversations)
+    
+    def mark_conversation_claimed(self, conversation_id):
+        with self.conversation_lock:
+            if conversation_id in self.waiting_conversations:
+                self.waiting_conversations.remove(conversation_id)
 
 
-shared_state = SharedState()
+user_store = UserStore()
 user_name_generator = UserNameGenerator(max_users=MAX_USERS)
 
 
 def auth_headers(token):
-    """Generate authentication headers with JWT token."""
+    """Generate authentication headers."""
     return {"Authorization": f"Bearer {token}"}
 
 
-class ChatBackendBase():
+class ChatBackend():
     """
-    Base class providing common authentication and API methods.
+    Base class for all user personas.
+    Provides common authentication and API interaction methods.
     """        
     
     def login(self, username, password):
-        """Login an existing user and store credentials."""
+        """Login an existing user."""
         response = self.client.post(
             "/auth/login",
             json={"username": username, "password": password},
@@ -137,12 +110,7 @@ class ChatBackendBase():
         if response.status_code == 200:
             data = response.json()
             is_expert = username.endswith('_expert')
-            return shared_state.store_user(
-                username, 
-                data.get("token"), 
-                data.get("user", {}).get("id"),
-                is_expert=is_expert
-            )
+            return user_store.store_user(username, data.get("token"), data.get("user", {}).get("id"), is_expert=is_expert)
         return None
         
     def register(self, username, password, is_expert=False):
@@ -154,16 +122,11 @@ class ChatBackendBase():
         )
         if response.status_code in [200, 201]:
             data = response.json()
-            return shared_state.store_user(
-                username, 
-                data.get("token"), 
-                data.get("user", {}).get("id"),
-                is_expert=is_expert
-            )
+            return user_store.store_user(username, data.get("token"), data.get("user", {}).get("id"), is_expert=is_expert)
         return None
 
     def check_conversation_updates(self, user):
-        """Check for conversation updates - tests DB query performance with timestamp filtering."""
+        """Check for conversation updates."""
         params = {}
         if hasattr(self, 'last_check_time') and self.last_check_time:
             params["since"] = self.last_check_time.isoformat()
@@ -178,7 +141,7 @@ class ChatBackendBase():
         return response.status_code == 200
     
     def check_message_updates(self, user):
-        """Check for message updates - tests DB query performance with timestamp filtering."""
+        """Check for message updates."""
         params = {}
         if hasattr(self, 'last_check_time') and self.last_check_time:
             params["since"] = self.last_check_time.isoformat()
@@ -193,7 +156,7 @@ class ChatBackendBase():
         return response.status_code == 200
     
     def check_expert_queue_updates(self, user):
-        """Check for expert queue updates - tests DB query performance."""
+        """Check for expert queue updates."""
         params = {}
         if hasattr(self, 'last_check_time') and self.last_check_time:
             params["since"] = self.last_check_time.isoformat()
@@ -208,7 +171,7 @@ class ChatBackendBase():
         return response.status_code == 200
     
     def create_conversation(self, user, title):
-        """Create a new conversation - tests DB writes and transaction handling."""
+        """Create a new conversation."""
         response = self.client.post(
             "/conversations",
             json={"title": title},
@@ -220,12 +183,12 @@ class ChatBackendBase():
             data = response.json()
             conversation_id = data.get("id")
             if conversation_id:
-                shared_state.add_conversation(conversation_id, status='waiting')
+                user_store.add_conversation(conversation_id, status='waiting')
             return conversation_id
         return None
     
     def get_conversations(self, user):
-        """Get all conversations for user - tests DB read performance."""
+        """Get all conversations for the user."""
         response = self.client.get(
             "/conversations",
             headers=auth_headers(user.get("auth_token")),
@@ -237,12 +200,12 @@ class ChatBackendBase():
             for conv in conversations:
                 conv_id = conv.get("id")
                 if conv_id:
-                    shared_state.add_conversation(conv_id, status=conv.get("status"))
+                    user_store.add_conversation(conv_id, status=conv.get("status"))
             return conversations
         return []
     
     def send_message(self, user, conversation_id, content):
-        """Send a message - tests DB writes and conversation updates."""
+        """Send a message to a conversation."""
         response = self.client.post(
             f"/conversations/{conversation_id}/messages",
             json={"content": content},
@@ -253,7 +216,7 @@ class ChatBackendBase():
         return response.status_code in [200, 201]
     
     def get_messages(self, user, conversation_id):
-        """Get messages - tests DB read performance with ordering."""
+        """Get messages from a conversation."""
         response = self.client.get(
             f"/conversations/{conversation_id}/messages",
             headers=auth_headers(user.get("auth_token")),
@@ -261,23 +224,100 @@ class ChatBackendBase():
         )
         
         return response.status_code == 200
-
-
-class InitiatorUser(HttpUser, ChatBackendBase):
-    """
-    Regular users who create conversations and wait for expert help.
     
-    Key scaling tests:
-    - Conversation creation throughput (DB writes)
-    - Message sending throughput (DB writes + updates)
-    - Polling load (DB reads with timestamp filtering)
-    - Authentication overhead (JWT validation)
+    def monitor_expert_queue(self, user):
+        """Check the expert queue."""
+        response = self.client.get(
+            "/expert/queue",
+            headers=auth_headers(user.get("auth_token")),
+            name="/expert/queue"
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        return None
+    
+    def claim_conversation(self, user, conversation_id):
+        """Claim a waiting conversation."""
+        response = self.client.post(
+            f"/expert/conversations/{conversation_id}/claim",
+            headers=auth_headers(user.get("auth_token")),
+            name="/expert/conversations/[id]/claim"
+        )
+        
+        if response.status_code == 200:
+            user_store.mark_conversation_claimed(conversation_id)
+            return True
+        return False
+    
+    def unclaim_conversation(self, user, conversation_id):
+        """Unclaim a conversation."""
+        response = self.client.post(
+            f"/expert/conversations/{conversation_id}/unclaim",
+            headers=auth_headers(user.get("auth_token")),
+            name="/expert/conversations/[id]/unclaim"
+        )
+        
+        if response.status_code == 200:
+            user_store.add_conversation(conversation_id, status='waiting')
+            return True
+        return False
+
+
+class IdleUser(HttpUser, ChatBackend):
+    """
+    Persona: A user that logs in and is idle but their browser polls for updates.
+    Checks for message updates, conversation updates, and expert queue updates every 5 seconds.
+    """
+    weight = 10
+    wait_time = between(5, 5)  # Check every 5 seconds
+
+    def on_start(self):
+        """Called when a simulated user starts."""
+        self.last_check_time = None
+        username = user_name_generator.generate_username()
+        password = username
+        
+        # Some idle users are experts
+        is_expert = random.random() < 0.2
+        if is_expert:
+            username += "_expert"
+        
+        self.user = self.login(username, password) or self.register(username, password, is_expert=is_expert)
+        if not self.user:
+            raise Exception(f"Failed to login or register user {username}")
+
+    @task
+    def poll_for_updates(self):
+        """Poll for all types of updates."""
+        # Check conversation updates
+        self.check_conversation_updates(self.user)
+        
+        # Check message updates
+        self.check_message_updates(self.user)
+        
+        # Check expert queue updates
+        self.check_expert_queue_updates(self.user)
+        
+        # Update last check time
+        self.last_check_time = datetime.utcnow()
+
+
+class InitiatorUser(HttpUser, ChatBackend):
+    """
+    Persona: An active initiator user who creates conversations and messages with experts.
+    
+    Behavior:
+    - Creates new conversations seeking expert help
+    - Sends messages to conversations
+    - Checks for expert responses
+    - Polls for updates
     """
     weight = 5
     wait_time = between(3, 10)
 
     def on_start(self):
-        """Initialize user - register or login."""
+        """Initialize user."""
         self.last_check_time = None
         username = user_name_generator.generate_username()
         password = username
@@ -289,7 +329,7 @@ class InitiatorUser(HttpUser, ChatBackendBase):
 
     @task(3)
     def create_conversation_and_send_message(self):
-        """Tests: DB write performance, transaction handling."""
+        """Create a new conversation and send initial message."""
         titles = [
             "Need help with account issue",
             "Question about product features",
@@ -312,18 +352,18 @@ class InitiatorUser(HttpUser, ChatBackendBase):
     
     @task(5)
     def check_for_responses(self):
-        """Tests: DB read performance, message ordering queries."""
-        if self.my_conversations or shared_state.conversations:
+        """Check conversations for new messages."""
+        if self.my_conversations or user_store.conversations:
             conversation_id = (random.choice(self.my_conversations) if self.my_conversations 
-                             else shared_state.get_random_conversation())
+                             else user_store.get_random_conversation())
             if conversation_id:
                 self.get_messages(self.user, conversation_id)
     
     @task(4)
     def respond_to_expert(self):
-        """Tests: DB write throughput, concurrent message inserts."""
+        """Send a follow-up message."""
         conversation_id = (random.choice(self.my_conversations) if self.my_conversations 
-                          else shared_state.get_random_conversation())
+                          else user_store.get_random_conversation())
         if conversation_id:
             follow_up_messages = [
                 "Thank you for the response!",
@@ -337,28 +377,29 @@ class InitiatorUser(HttpUser, ChatBackendBase):
     
     @task(2)
     def browse_my_conversations(self):
-        """Tests: DB read performance, query filtering by user_id."""
+        """Browse the user's conversation list."""
         conversations = self.get_conversations(self.user)
         if conversations:
             self.my_conversations = [c.get("id") for c in conversations if c.get("id")]
     
     @task(6)
     def poll_for_updates(self):
-        """Tests: Sustained DB read load, timestamp-based filtering, index usage."""
+        """Poll for updates."""
         self.check_conversation_updates(self.user)
         self.check_message_updates(self.user)
         self.last_check_time = datetime.utcnow()
 
 
-class ExpertUser(HttpUser, ChatBackendBase):
+class ExpertUser(HttpUser, ChatBackend):
     """
-    Expert users who claim conversations and respond to initiators.
+    Persona: An expert user who monitors the queue, claims conversations, and helps initiators.
     
-    Key scaling tests:
-    - Expert queue query performance (complex WHERE clauses)
-    - Conversation claiming race conditions (DB locking under load)
-    - Transaction throughput (claim/unclaim operations)
-    - Concurrent write conflicts
+    Behavior:
+    - Monitors expert queue for waiting conversations
+    - Claims conversations from the queue
+    - Responds to initiator messages
+    - Manages multiple active conversations
+    - Occasionally unclaims conversations when done
     """
     weight = 2
     wait_time = between(2, 8)
@@ -375,34 +416,23 @@ class ExpertUser(HttpUser, ChatBackendBase):
         self.my_claimed_conversations = []
     
     @task(6)
-    def monitor_expert_queue(self):
-        """Tests: Complex DB queries (status filtering, user_id filtering), query optimization."""
-        response = self.client.get(
-            "/expert/queue",
-            headers=auth_headers(self.user.get("auth_token")),
-            name="/expert/queue"
-        )
+    def monitor_queue(self):
+        """Check the expert queue for waiting conversations."""
+        queue_data = self.monitor_expert_queue(self.user)
         
-        if response.status_code == 200:
-            data = response.json()
-            assigned = data.get("assignedConversations", [])
+        if queue_data:
+            assigned = queue_data.get("assignedConversations", [])
             self.my_claimed_conversations = [c.get("id") for c in assigned if c.get("id")]
     
     @task(5)
     def claim_waiting_conversation(self):
-        """Tests: Race condition handling, DB locking (conversation.lock!), transaction throughput."""
-        conversation_id = shared_state.get_waiting_conversation()
+        """Claim a conversation from the waiting queue."""
+        conversation_id = user_store.get_waiting_conversation()
         if conversation_id:
-            response = self.client.post(
-                f"/expert/conversations/{conversation_id}/claim",
-                headers=auth_headers(self.user.get("auth_token")),
-                name="/expert/conversations/[id]/claim"
-            )
-            
-            if response.status_code == 200:
-                shared_state.mark_conversation_claimed(conversation_id)
+            if self.claim_conversation(self.user, conversation_id):
                 self.my_claimed_conversations.append(conversation_id)
                 
+                # Send initial expert response
                 greetings = [
                     "Hello! I'm here to help you.",
                     "Hi, I've reviewed your question. Let me assist you.",
@@ -413,7 +443,7 @@ class ExpertUser(HttpUser, ChatBackendBase):
     
     @task(7)
     def respond_to_initiator(self):
-        """Tests: DB write performance, message insertion throughput."""
+        """Send a response message in a claimed conversation."""
         if not self.my_claimed_conversations:
             return
         
@@ -432,7 +462,7 @@ class ExpertUser(HttpUser, ChatBackendBase):
     
     @task(4)
     def read_conversation_messages(self):
-        """Tests: DB read performance with ordering, index usage on conversation_id."""
+        """Read messages from an assigned conversation."""
         if not self.my_claimed_conversations:
             return
         
@@ -441,7 +471,7 @@ class ExpertUser(HttpUser, ChatBackendBase):
     
     @task(1)
     def unclaim_conversation(self):
-        """Tests: Transaction handling, DB update performance, status changes."""
+        """Unclaim a conversation (mark as resolved)."""
         if not self.my_claimed_conversations:
             return
         
@@ -450,58 +480,13 @@ class ExpertUser(HttpUser, ChatBackendBase):
             return
         
         conversation_id = random.choice(self.my_claimed_conversations)
-        response = self.client.post(
-            f"/expert/conversations/{conversation_id}/unclaim",
-            headers=auth_headers(self.user.get("auth_token")),
-            name="/expert/conversations/[id]/unclaim"
-        )
-        
-        if response.status_code == 200:
+        if self.unclaim_conversation(self.user, conversation_id):
             self.my_claimed_conversations.remove(conversation_id)
-            shared_state.add_conversation(conversation_id, status='waiting')
     
     @task(3)
     def poll_expert_updates(self):
-        """Tests: Sustained DB read load for expert-specific queries, timestamp filtering."""
+        """Poll for expert queue updates."""
         self.check_expert_queue_updates(self.user)
         self.check_conversation_updates(self.user)
         self.check_message_updates(self.user)
-        self.last_check_time = datetime.utcnow()
-
-
-class IdlePollingUser(HttpUser, ChatBackendBase):
-    """
-    Users with the app open but not actively using it - constant polling.
-    
-    Key scaling tests:
-    - Sustained high-frequency read load (every 5 seconds)
-    - DB connection pool utilization
-    - Index performance on updated_at/created_at columns
-    - Load balancer distribution (horizontal scaling)
-    - Database read replica potential (if configured)
-    
-    This is the PRIMARY bottleneck test - most users are idle and polling.
-    """
-    weight = 10
-    wait_time = between(5, 5)  # Poll exactly every 5 seconds
-
-    def on_start(self):
-        """Initialize idle user."""
-        self.last_check_time = None
-        username = user_name_generator.generate_username()
-        password = username
-        is_expert = random.random() < EXPERT_RATIO
-        if is_expert:
-            username += "_expert"
-        
-        self.user = self.login(username, password) or self.register(username, password, is_expert=is_expert)
-        if not self.user:
-            raise Exception(f"Failed to login or register user {username}")
-
-    @task
-    def poll_all_updates(self):
-        """Tests: Maximum DB read load, connection pool limits, query performance at scale."""
-        self.check_conversation_updates(self.user)
-        self.check_message_updates(self.user)
-        self.check_expert_queue_updates(self.user)
         self.last_check_time = datetime.utcnow()
