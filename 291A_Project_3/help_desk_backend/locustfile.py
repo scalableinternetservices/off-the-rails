@@ -30,12 +30,47 @@ class UserNameGenerator:
         return f"user_{(self.seed + self.current_index * self.prime_number) % self.max_users}"
 
 
+# class UserStore:
+#     def __init__(self):
+#         self.used_usernames = {}
+#         self.username_lock = threading.Lock()
+#         self.conversations = {}
+#         self.convo_lock = threading.Lock()
+
+#     def get_random_user(self):
+#         with self.username_lock:
+#             random_username = random.choice(list(self.used_usernames.keys()))
+#             return self.used_usernames[random_username]
+
+#     def store_user(self, username, auth_token, user_id):
+#         with self.username_lock:
+#             self.used_usernames[username] = {
+#                 "username": username,
+#                 "auth_token": auth_token,
+#                 "user_id": user_id
+#             }
+#             return self.used_usernames[username]
+
+#     def add_convo(self, username, convo_id):
+#         with self.convo_lock:
+#             if username not in self.conversations:
+#                 self.conversations[username] = []
+#             self.conversations[username].append(convo_id)
+
+#     def get_random_convo(self, username):
+#         with self.convo_lock:
+#             convos = self.conversations.get(username, [])
+#             if not convos:
+#                 return None
+#             return random.choice(convos)
 class UserStore:
     def __init__(self):
         self.used_usernames = {}
         self.username_lock = threading.Lock()
-        self.conversations = []
+        self.conversations = []  # Keep for backward compatibility if needed
         self.convo_lock = threading.Lock()
+        self.user_conversations = {}  # NEW: Track conversations per username
+        self.user_convo_lock = threading.Lock()
 
     def get_random_user(self):
         with self.username_lock:
@@ -51,16 +86,28 @@ class UserStore:
             }
             return self.used_usernames[username]
 
-    def add_convo(self, convo_id):
+    def add_convo(self, convo_id, username=None):  # Add username parameter
         with self.convo_lock:
             self.conversations.append(convo_id)
+        
+        # Also track per username
+        if username:
+            with self.user_convo_lock:
+                if username not in self.user_conversations:
+                    self.user_conversations[username] = []
+                self.user_conversations[username].append(convo_id)
     
     def get_random_convo(self):
         with self.convo_lock:
             if not self.conversations:
                 return None
             return random.choice(self.conversations)
-
+    
+    def get_user_convo(self, username):  # NEW: Get conversation for specific username
+        with self.user_convo_lock:
+            if username not in self.user_conversations or not self.user_conversations[username]:
+                return None
+            return random.choice(self.user_conversations[username])
 
 
 user_store = UserStore()
@@ -98,6 +145,19 @@ class ChatBackend():
     def auth_headers(self, token):
         return {"Authorization": f"Bearer {token}"}
 
+    # def create_convo(self, user):
+    #     title = f"Conversation {random.randint(1, 10000) * random.randint(1, 10000)}"
+    #     response = self.client.post(
+    #         "/conversations",
+    #         json={"title": title},
+    #         headers=self.auth_headers(user.get("auth_token")),
+    #         name="/conversations"
+    #     )
+    #     if response.status_code == 200 or response.status_code == 201:
+    #         data = response.json()
+    #         user_store.add_convo(data["id"])
+    #         return True
+    #     return False
     def create_convo(self, user):
         title = f"Conversation {random.randint(1, 10000) * random.randint(1, 10000)}"
         response = self.client.post(
@@ -108,9 +168,10 @@ class ChatBackend():
         )
         if response.status_code == 200 or response.status_code == 201:
             data = response.json()
-            user_store.add_convo(data["id"])
-            return True
-        return False
+            convo_id = data["id"]
+            user_store.add_convo(convo_id, user.get("username"))  # Pass username
+            return convo_id  # Return the ID instead of True
+        return None  # Return None instead of False
     
     def send_message(self, user, convo_id):
         # content = f"Message {random.randint(1, 10000) * random.randint(1, 10000)}"
@@ -236,7 +297,8 @@ class NewUser(HttpUser, ChatBackend):
         if not self.user:
             raise Exception(f"Failed to register new user {username}")
         if self.create_convo(self.user):
-            cid = user_store.get_random_convo()
+            # cid = user_store.get_random_convo() #NOTE: changed
+            cid = user_store.get_user_convo(username)
             if cid:
                 self.send_message(self.user, cid)
 
@@ -283,7 +345,8 @@ class ActiveUser(HttpUser, ChatBackend):
     @task(10)
     def post_message(self):
         # Post messages in random existing conversations
-        cid = user_store.get_random_convo()
+        # cid = user_store.get_random_convo() NOTE: changed
+        cid = user_store.get_user_convo(self.user.get("username"))
         if cid:
             self.send_message(self.user, cid)
         return
@@ -358,7 +421,7 @@ class InitiatorUser(HttpUser, ChatBackend):
                 name="/conversations/{conversation_id}/messages"
             )
         elif user_store.conversations:
-            conversation_id = user_store.get_random_convo()
+            conversation_id = user_store.get_user_convo(self.user.get("username"))
             if conversation_id:
                 response = self.client.get(
                     f"/conversations/{conversation_id}/messages",
@@ -370,7 +433,7 @@ class InitiatorUser(HttpUser, ChatBackend):
     def respond_to_expert(self):
         """Send a follow-up message in an existing conversation."""
         conversation_id = (random.choice(self.my_conversations) if self.my_conversations 
-                          else user_store.get_random_convo())
+                          else user_store.get_user_convo(self.user.get("username")))
         if conversation_id:
             self.send_message(self.user, conversation_id)
     
