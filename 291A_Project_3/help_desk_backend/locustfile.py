@@ -428,9 +428,9 @@ class ExpertUser1(HttpUser, ChatBackend):
             self.my_claimed_conversations = [c.get("id") for c in assigned if c.get("id")]
     
     @task(5)
-    def claim_waiting_conversation(self):
+    def claim_conversation(self):
         """Claim a conversation from the waiting queue."""
-        conversation_id = user_store.get_waiting_convo()
+        conversation_id = user_store.get_random_convo()
         if conversation_id:
             response = self.client.post(
                 f"/expert/conversations/{conversation_id}/claim",
@@ -524,7 +524,7 @@ class ExpertUser2(HttpUser, ChatBackend):
     def ensure_expert_profile(self):
         response = self.client.get(
             "/expert/profile",
-            headers=auth_headers(self.user["auth_token"]),
+            headers=self.auth_headers(self.user["auth_token"]),
             name="/expert/profile"
         )
         if response.status_code == 404:
@@ -534,7 +534,7 @@ class ExpertUser2(HttpUser, ChatBackend):
                     "bio": "Load test expert",
                     "knowledgeBaseLinks": ["https://example.com/help"]
                 },
-                headers=auth_headers(self.user["auth_token"]),
+                headers=self.auth_headers(self.user["auth_token"]),
                 name="/expert/profile (create)"
             )
 
@@ -550,7 +550,7 @@ class ExpertUser2(HttpUser, ChatBackend):
         # Fetch full expert queue
         response = self.client.get(
             "/expert/queue",
-            headers=auth_headers(self.user["auth_token"]),
+            headers=self.auth_headers(self.user["auth_token"]),
             name="/expert/queue"
         )
         if response.status_code != 200:
@@ -585,7 +585,7 @@ class ExpertUser2(HttpUser, ChatBackend):
     def claim_conversation(self, conversation_id):
         response = self.client.post(
             f"/expert/queue/{conversation_id}/claim",
-            headers=auth_headers(self.user["auth_token"]),
+            headers=self.auth_headers(self.user["auth_token"]),
             name="/expert/claim"
         )
 
@@ -617,7 +617,7 @@ class ExpertUser2(HttpUser, ChatBackend):
                     "Great question. The issue is likely this..."
                 ])
             },
-            headers=auth_headers(self.user["auth_token"]),
+            headers=self.auth_headers(self.user["auth_token"]),
             name="/messages/send"
         )
 
