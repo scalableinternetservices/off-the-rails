@@ -72,6 +72,11 @@ class UserStore:
         self.user_conversations = {}  # NEW: Track conversations per username
         self.user_convo_lock = threading.Lock()
 
+        # NOTE: ### testing start ###
+        self.claimed_conversations = set()  # NEW: Track globally claimed conversations
+        self.claimed_lock = threading.Lock()
+        ### testing end ###
+
     def get_random_user(self):
         with self.username_lock:
             random_username = random.choice(list(self.used_usernames.keys()))
@@ -108,6 +113,16 @@ class UserStore:
             if username not in self.user_conversations or not self.user_conversations[username]:
                 return None
             return random.choice(self.user_conversations[username])
+    
+    ### NOTE: testing start ###
+    def mark_claimed(self, convo_id):  # NEW: Mark conversation as claimed
+        with self.claimed_lock:
+            self.claimed_conversations.add(convo_id)
+    
+    def is_claimed(self, convo_id):  # NEW: Check if conversation is claimed
+        with self.claimed_lock:
+            return convo_id in self.claimed_conversations
+    ### testing end ###
 
 
 user_store = UserStore()
@@ -544,7 +559,7 @@ class ExpertUser2(HttpUser, ChatBackend):
     #         self.active_conversations[conversation_id] = {
     #             "last_reply": datetime.utcnow()
     #         }
-# Polling expert queue
+
     @task(5)
     def poll_expert_queue(self):
         """Poll for updates, claim new conversations, and manage ongoing ones."""
@@ -568,6 +583,7 @@ class ExpertUser2(HttpUser, ChatBackend):
 
         for convo in assigned:
             cid = convo["id"]
+            user_store.mark_claimed(cid)  # Mark as claimed globally
             if cid not in self.active_conversations:
                 self.active_conversations[cid] = {
                     "last_reply": datetime.utcnow()
@@ -575,10 +591,22 @@ class ExpertUser2(HttpUser, ChatBackend):
 
         # Claim new conversations if available
         if waiting:
-            num_to_claim = min(len(waiting), random.randint(1, 2))
-            for convo in waiting[:num_to_claim]:
-                # Try to claim, but don't fail if another expert got it first
-                self.claim_conversation(convo["id"])
+            # Filter out conversations already claimed by any expert
+            available = [c for c in waiting if not user_store.is_claimed(c["id"])]
+            
+            if available:
+                num_to_claim = min(len(available), random.randint(1, 2))
+                random.shuffle(available)  # Randomize to reduce contention
+                
+                for convo in available[:num_to_claim]:
+                    # Optimistically mark as claimed before attempting
+                    convo_id = convo["id"]
+                    user_store.mark_claimed(convo_id)
+                    
+                    # Try to claim
+                    if not self.claim_conversation(convo_id):
+                        # If claim failed, it's fine - another expert got it
+                        pass
 
         self.check_message_updates(self.user)
         self.check_conversation_updates(self.user)
@@ -589,7 +617,6 @@ class ExpertUser2(HttpUser, ChatBackend):
 
         self.last_check_time = datetime.utcnow()
 
-    # Claim conversation
     def claim_conversation(self, conversation_id):
         response = self.client.post(
             f"/expert/conversations/{conversation_id}/claim",
@@ -597,19 +624,14 @@ class ExpertUser2(HttpUser, ChatBackend):
             name="/expert/conversations/claim"
         )
 
-        # Only track if claim was successful
+        # Only track locally if claim was successful
         if response.status_code == 200:
             self.active_conversations[conversation_id] = {
                 "last_reply": datetime.utcnow()
             }
             return True
-        elif response.status_code == 409:  # Conflict - already claimed by another expert
-            # This is expected behavior in a load test, not an error
-            return False
-        elif response.status_code == 404:  # Conversation doesn't exist
-            return False
         else:
-            # Unexpected error, but don't crash
+            # Claim failed (409, 404, etc.) - this is expected in concurrent tests
             return False
 
     def reply_to_conversation(self, convo_id):
