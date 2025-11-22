@@ -54,6 +54,12 @@ class UserStore:
     def add_convo(self, convo_id):
         with self.convo_lock:
             self.conversations.append(convo_id)
+    
+    def get_random_convo(self):
+        with self.convo_lock:
+            if not self.conversations:
+                return None
+            return random.choice(self.conversations)
 
 
 
@@ -195,3 +201,33 @@ class IdleUser(HttpUser, ChatBackend):
 
         # Update last check time
         self.last_check_time = datetime.utcnow()
+
+class NewUser(HttpUser, ChatBackend):
+    # 1 out of 10 users, registers and does very little
+    weight = 1
+    wait_time = between(10, 20)
+
+    def on_start(self):
+        # Register a user (or login) on start, create a conversation and send a message
+        self.last_check_time = None
+        username = user_name_generator.generate_username()
+        password = username
+        self.user = self.register(username, password)
+        if not self.user:
+            self.user = self.login(username, password)
+        if not self.user:
+            raise Exception(f"Failed to register new user {username}")
+        if self.create_convo(self.user):
+            cid = user_store.get_random_convo()
+            if cid:
+                self.send_message(self.user, cid)
+
+    @task
+    def browse_updates(self):
+        # New user occasionally polls for updates
+        self.check_conversation_updates(self.user)
+        self.check_message_updates(self.user)
+        self.last_check_time = datetime.utcnow()
+
+
+
