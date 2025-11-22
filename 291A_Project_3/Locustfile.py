@@ -278,15 +278,15 @@ class ActiveUser(HttpUser, ChatBackend):
         self.check_conversation_updates(self.user)
         self.last_check_time = datetime.utcnow()
 
-    # @task(2)
-    # def read_random_conversation(self):
-    #     # Simulate navigating to a conversation page
-    #     cid = user_store.get_random_convo()
-    #     if not cid:
-    #         return
-    #     response = self.client.get(
-    #         f"/conversations/{cid}",
-    #         headers=self.auth_headers(self.user.get("auth_token")),
-    #         name="/conversations#show"
-    #     )
-    #     return response.status_code == 200
+    @task(2)
+    def read_random_conversation(self):
+        # Simulate navigating to a conversation page
+        cid = user_store.get_random_convo()
+        if not cid:
+            return
+        response = self.client.get(
+            f"/conversations/{cid}",
+            headers=self.auth_headers(self.user.get("auth_token")),
+            name="/conversations#show"
+        )
+        return response.status_code == 200
