@@ -605,26 +605,13 @@ class ExpertUser2(HttpUser, ChatBackend):
             return
 
         # Send message
-        response = self.client.post(
-            "/messages/send",
-            json={
-                "conversationId": convo_id,
-                "senderId": self.user["user_id"],
-                "text": random.choice([
-                    "Here is a detailed explanation.",
-                    "Let's walk through this step by step.",
-                    "I can help with that.",
-                    "Great question. The issue is likely this..."
-                ])
-            },
-            headers=self.auth_headers(self.user["auth_token"]),
-            name="/messages/send"
-        )
+        success = self.send_message(self.user, convo_id)
 
-        if response.status_code in (200, 201):
+        if success:
             convo_state["last_reply"] = datetime.utcnow()
             return True
         else:
-            # If conversation is closed, remove it
+            # If conversation is closed or message fails, remove it from active
             self.active_conversations.pop(convo_id, None)
             return False
+
