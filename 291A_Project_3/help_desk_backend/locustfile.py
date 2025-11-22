@@ -12,6 +12,8 @@ import threading
 from datetime import datetime
 from locust import HttpUser, task, between
 
+def auth_headers(token):
+    return {"Authorization": f"Bearer {token}"}
 
 # Configuration
 MAX_USERS = 10000
@@ -86,68 +88,52 @@ class ChatBackend():
             )
         return None
 
-    def fetch_conversations(self, user):
-        """Fetch list of conversations for the user."""
+    def check_conversation_updates(self, user):
+        """Check for conversation updates."""
+        # params = {"userId": user.get("user_id")}
+        # if self.last_check_time:
+        #     params["since"] = self.last_check_time.isoformat()
+        
         response = self.client.get(
             "/api/conversations",
             headers=auth_headers(user["auth_token"]),
             name="/api/conversations"
         )
-        return response.json() if response.status_code == 200 else []
-
-    def create_conversation(self, user):
-        """Create a new conversation."""
-        title = f"conv_{random.randint(1,999999)}"
-        self.client.post(
-            "/api/conversations",
-            json={"title": title},
-            headers=auth_headers(user["auth_token"]),
-            name="/api/conversations/create"
-        )
+        return response.status_code == 200
     
-    def fetch_messages(self, user, conversation_id):
-        """Fetch messages for a conversation."""
-        self.client.get(
-            f"/api/messages?conversation_id={conversation_id}",
+    def check_message_updates(self, user):
+        convos_response = self.client.get(
+            "/api/conversations",
+            headers=auth_headers(user["auth_token"]),
+            name="/api/conversations"
+        )
+
+        if convos_response.status_code != 200:
+            return False
+        
+        convos = convos_response.json()
+        if not convos:
+            return False
+
+
+        convo = random.choice(convos)
+        convo_id = convo["id"]
+
+        messages_response = self.client.get(
+            f"/api/messages?conversation_id={convo_id}",
             headers=auth_headers(user["auth_token"]),
             name="/api/messages"
         )
 
-    def send_message(self, user, conversation_id):
-        """Send a message in a conversation."""
-        content = f"hello_{random.randint(1,100000)}"
-        self.client.post(
-            "/api/messages",
-            json={"conversation_id": conversation_id, "content": content},
-            headers=auth_headers(user["auth_token"]),
-            name="/api/messages/create"
-        )
+        return messages_response.status_code == 200
     
-    def expert_queue(self, user):
-        """Fetch waiting + assigned conversations for an expert."""
+    def check_expert_queue_updates(self, user):
         response = self.client.get(
             "/expert/queue",
             headers=auth_headers(user["auth_token"]),
             name="/expert/queue"
         )
-        if response.status_code == 200:
-            d = response.json()
-            return d.get("waitingConversations", []), d.get("assignedConversations", [])
-        return [], []
-
-    def claim_conversation(self, user, convo_id):
-        self.client.post(
-            f"/expert/conversations/{convo_id}/claim",
-            headers=auth_headers(user["auth_token"]),
-            name="/expert/conversations/claim"
-        )
-
-    def unclaim_conversation(self, user, convo_id):
-        self.client.post(
-            f"/expert/conversations/{convo_id}/unclaim",
-            headers=auth_headers(user["auth_token"]),
-            name="/expert/conversations/unclaim"
-        )
+        return response.status_code == 200
     
 
 class IdleUser(HttpUser, ChatBackend):
@@ -190,15 +176,13 @@ class LightActiveUser(HttpUser, ChatBackend):
         self.last_check_time = None
         username = user_name_generator.generate_username()
         password = username
-        
-        # Trying login else fallback to register
+
         self.user = self.login(username, password) or self.register(username, password)
         if not self.user:
             raise Exception(f"Failed to init LightActiveUser {username}")
 
     @task(4)
     def view_conversations(self):
-        """Read-heavy endpoint."""
         self.client.get(
             "/api/conversations",
             headers=auth_headers(self.user["auth_token"]),
@@ -207,24 +191,33 @@ class LightActiveUser(HttpUser, ChatBackend):
 
     @task(4)
     def view_messages(self):
-        """Fetch messages for this user."""
+        convos_response = self.client.get(
+            "/api/conversations",
+            headers=auth_headers(self.user["auth_token"]),
+            name="/api/conversations"
+        )
+        if convos_response.status_code != 200:
+            return
+        
+        convos = convos_response.json()
+        if not convos:
+            return
+
+        convo = random.choice(convos)
+        convo_id = convo["id"]
+
         self.client.get(
-            f"/api/messages?userId={self.user['user_id']}",
+            f"/api/messages?conversation_id={convo_id}",
             headers=auth_headers(self.user["auth_token"]),
             name="/api/messages"
         )
 
     @task(1)
     def maybe_create_conversation(self):
-        """
-        Occasional write — small chance.
-        Helps test DB writes without flooding.
-        """
-        # 10% chance
         if random.random() < 0.10:
             self.client.post(
                 "/api/conversations",
-                json={"title": f"test_conv_{random.randint(1,100000)}"},
+                json={"title": f"test_conv_{random.randint(1, 100000)}"},
                 headers=auth_headers(self.user["auth_token"]),
                 name="/api/conversations/create"
             )
