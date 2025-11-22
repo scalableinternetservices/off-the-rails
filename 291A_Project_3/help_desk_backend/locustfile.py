@@ -322,7 +322,7 @@ class InitiatorUser(HttpUser, ChatBackend):
         self.last_check_time = None
         username = user_name_generator.generate_username()
         password = username
-        self.user = self.login(username, password) or self.register(username, password, is_expert=False)
+        self.user = self.login(username, password) or self.register(username, password)
         if not self.user:
             raise Exception(f"Failed to login or register user {username}")
         
@@ -385,7 +385,7 @@ class InitiatorUser(HttpUser, ChatBackend):
         self.last_check_time = datetime.utcnow()
 
 
-class ExpertUser2(HttpUser, ChatBackend):
+class ExpertUser1(HttpUser, ChatBackend):
     """
     Persona: Expert user who monitors the queue, claims conversations, and helps initiators.
     
@@ -405,7 +405,7 @@ class ExpertUser2(HttpUser, ChatBackend):
         self.last_check_time = None
         username = user_name_generator.generate_username() + "_expert"
         password = username
-        self.user = self.login(username, password) or self.register(username, password, is_expert=True)
+        self.user = self.login(username, password) or self.register(username, password)
         if not self.user:
             raise Exception(f"Failed to login or register expert {username}")
         
@@ -496,3 +496,135 @@ class ExpertUser2(HttpUser, ChatBackend):
         self.check_conversation_updates(self.user)
         self.check_message_updates(self.user)
         self.last_check_time = datetime.utcnow()
+
+class ExpertUser2(HttpUser, ChatBackend):
+    """
+    Persona: An expert user who checks the queue, claims conversations, replies, and polls for updates.
+    """
+
+    weight = 3       # Less common than regular users
+    wait_time = between(2, 6)
+
+    def on_start(self):
+        """Login or register expert, ensure profile exists."""
+        username = user_name_generator.generate_username()
+        password = username
+
+        self.user = self.login(username, password) or self.register(username, password)
+        if not self.user:
+            raise Exception(f"Failed to login/register expert {username}")
+
+        self.ensure_expert_profile()
+
+        self.last_check_time = None
+
+        self.active_conversations = {}
+
+    # Helper: Ensure expert profile exists
+    def ensure_expert_profile(self):
+        response = self.client.get(
+            "/expert/profile",
+            headers=auth_headers(self.user["auth_token"]),
+            name="/expert/profile"
+        )
+        if response.status_code == 404:
+            self.client.put(
+                "/expert/profile",
+                json={
+                    "bio": "Load test expert",
+                    "knowledgeBaseLinks": ["https://example.com/help"]
+                },
+                headers=auth_headers(self.user["auth_token"]),
+                name="/expert/profile (create)"
+            )
+
+    # Polling expert queue
+    @task(5)
+    def poll_expert_queue(self):
+        """Poll for updates, claim new conversations, and manage ongoing ones."""
+
+        updated = self.check_expert_queue_updates(self.user)
+        if not updated:
+            return
+
+        # Fetch full expert queue
+        response = self.client.get(
+            "/expert/queue",
+            headers=auth_headers(self.user["auth_token"]),
+            name="/expert/queue"
+        )
+        if response.status_code != 200:
+            return
+
+        data = response.json()
+        waiting = data.get("waitingConversations", [])
+        assigned = data.get("assignedConversations", [])
+
+        for convo in assigned:
+            cid = convo["id"]
+            if cid not in self.active_conversations:
+                self.active_conversations[cid] = {
+                    "last_reply": datetime.utcnow()
+                }
+
+        # Claim new conversations if available
+        if waiting:
+            num_to_claim = min(len(waiting), random.randint(1, 2))
+            for convo in waiting[:num_to_claim]:
+                self.claim_conversation(convo["id"])
+
+        self.check_message_updates(self.user)
+        self.check_conversation_updates(self.user)
+        # Manage existing conversations (reply occasionally)
+        for convo_id in list(self.active_conversations):
+            self.maybe_reply_to_conversation(convo_id)
+
+        self.last_check_time = datetime.utcnow()
+
+    # Claim conversation
+    def claim_conversation(self, conversation_id):
+        response = self.client.post(
+            f"/expert/queue/{conversation_id}/claim",
+            headers=auth_headers(self.user["auth_token"]),
+            name="/expert/claim"
+        )
+
+        if response.status_code == 200:
+            # Track new claimed conversation
+            self.active_conversations[conversation_id] = {
+                "last_reply": datetime.utcnow()
+            }
+
+    def maybe_reply_to_conversation(self, convo_id):
+        convo_state = self.active_conversations.get(convo_id)
+        if not convo_state:
+            return
+
+        # Only reply every ~3–10 seconds
+        if (datetime.utcnow() - convo_state["last_reply"]).total_seconds() < random.randint(3, 10):
+            return
+
+        # Send message
+        response = self.client.post(
+            "/messages/send",
+            json={
+                "conversationId": convo_id,
+                "senderId": self.user["user_id"],
+                "text": random.choice([
+                    "Here is a detailed explanation.",
+                    "Let's walk through this step by step.",
+                    "I can help with that.",
+                    "Great question. The issue is likely this..."
+                ])
+            },
+            headers=auth_headers(self.user["auth_token"]),
+            name="/messages/send"
+        )
+
+        if response.status_code in (200, 201):
+            convo_state["last_reply"] = datetime.utcnow()
+            return True
+        else:
+            # If conversation is closed, remove it
+            self.active_conversations.pop(convo_id, None)
+            return False
