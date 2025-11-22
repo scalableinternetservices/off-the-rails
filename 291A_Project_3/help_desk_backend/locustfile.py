@@ -90,7 +90,7 @@ class ChatBackend():
             json={"username": username, "password": password},
             name="/auth/register"
         )
-        if response.status.code == 200 or response.status.code == 201:
+        if response.status_code == 200 or response.status_code == 201:
             data = response.json()
             return user_store.store_user(username, data.get("token"), data.get("user", {}).get("id"))
         return None
@@ -106,7 +106,7 @@ class ChatBackend():
             headers=self.auth_headers(user.get("auth_token")),
             name="/conversations"
         )
-        if response.status.code == 200 or response.status.code == 201:
+        if response.status_code == 200 or response.status_code == 201:
             data = response.json()
             user_store.add_convo(data["id"])
             return True
@@ -120,7 +120,7 @@ class ChatBackend():
             headers=self.auth_headers(user.get("auth_token")),
             name="/messages/create"
         )
-        return response.status.code == 200 or response.status.code == 201
+        return response.status_code == 200 or response.status_code == 201
 
     # def expert_queue(self, user):
     #     response = self.client.get(
