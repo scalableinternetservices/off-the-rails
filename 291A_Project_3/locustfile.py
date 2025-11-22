@@ -172,8 +172,7 @@ class IdleUser(HttpUser, ChatBackend):
 
 class ExpertUser(HttpUser, ChatBackend):
     """
-    Persona: An expert user who checks the queue, claims conversations,
-    reads messages, replies, and polls for updates.
+    Persona: An expert user who checks the queue, claims conversations, replies, and polls for updates.
     """
 
     weight = 3       # Less common than regular users
@@ -295,9 +294,11 @@ class ExpertUser(HttpUser, ChatBackend):
             name="/messages/send"
         )
 
-        if response.status_code == 200:
+        if response.status_code in (200, 201):
             convo_state["last_reply"] = datetime.utcnow()
+            return True
         else:
             # If conversation is closed, remove it
             self.active_conversations.pop(convo_id, None)
+            return False
 
