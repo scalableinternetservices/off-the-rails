@@ -526,19 +526,19 @@ class LightUser(HttpUser, ChatBackend):
     @task(4)
     def view_conversations(self):
         """Light user loads their conversation list."""
-        self.client.get(
-            "/api/conversations",
+        response = self.client.get(
+            "/conversations",
             headers=self.auth_headers(self.user["auth_token"]),
-            name="/api/conversations"
+            name="/conversations"
         )
 
     @task(4)
     def view_messages(self):
         """View messages from a random existing conversation."""
         convos_response = self.client.get(
-            "/api/conversations",
+            "/conversations",
             headers=self.auth_headers(self.user["auth_token"]),
-            name="/api/conversations"
+            name="/conversations"
         )
 
         if convos_response.status_code != 200:
@@ -552,9 +552,9 @@ class LightUser(HttpUser, ChatBackend):
         convo_id = convo["id"]
 
         self.client.get(
-            f"/api/messages?conversation_id={convo_id}",
+            f"/conversations/{convo_id}/messages",
             headers=self.auth_headers(self.user["auth_token"]),
-            name="/api/messages"
+            name="/conversations/:id/messages"
         )
 
     @task(1)
@@ -562,10 +562,10 @@ class LightUser(HttpUser, ChatBackend):
         """10% chance this user creates a new conversation."""
         if random.random() < 0.10:
             response = self.client.post(
-                "/api/conversations",
+                "/conversations",
                 json={"title": f"test_conv_{random.randint(1, 100000)}"},
                 headers=self.auth_headers(self.user["auth_token"]),
-                name="/api/conversations/create"
+                name="/conversations/create"
             )
 
             # Track in user_store if successful
