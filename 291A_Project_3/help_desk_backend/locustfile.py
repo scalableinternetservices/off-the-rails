@@ -200,7 +200,7 @@ class IdleUser(HttpUser, ChatBackend):
         password = username
         self.user = self.login(username, password) or self.register(username, password)
         if not self.user:
-            raise Exception(f"Failed to login or register user {username}")
+            raise Exception(f"IdleUser: Failed to login or register user {username}")
 
     @task
     def poll_for_updates(self):
@@ -231,7 +231,7 @@ class NewUser(HttpUser, ChatBackend):
         if not self.user:
             self.user = self.login(username, password)
         if not self.user:
-            raise Exception(f"Failed to register new user {username}")
+            raise Exception(f"NewUser: Failed to register new user {username}")
         if self.create_convo(self.user):
             # cid = user_store.get_random_convo() #NOTE: changed
             cid = user_store.get_user_convo(username)
@@ -316,7 +316,7 @@ class InitiatorUser(HttpUser, ChatBackend):
         password = username
         self.user = self.login(username, password) or self.register(username, password)
         if not self.user:
-            raise Exception(f"Failed to login or register user {username}")
+            raise Exception(f"InitiatorUser: Failed to login or register user {username}")
         
         self.my_conversations = []
 
@@ -391,7 +391,7 @@ class ExpertUser2(HttpUser, ChatBackend):
 
         self.user = self.login(username, password) or self.register(username, password)
         if not self.user:
-            raise Exception(f"Failed to login/register expert {username}")
+            raise Exception(f"ExpertUser: Failed to login/register expert {username}")
 
         self.ensure_expert_profile()
 
