@@ -503,3 +503,74 @@ class ExpertUser(HttpUser, ChatBackend):
             self.active_conversations.pop(convo_id, None)
             return False
 
+
+class LightUser(HttpUser, ChatBackend):
+    """
+    Persona: Light browsing user.
+    Logs in or registers, views conversations, views messages,and occasionally creates a conversation.
+    """
+    weight = 3
+    wait_time = between(10, 15)
+
+    def on_start(self):
+        self.last_check_time = None
+        username = user_name_generator.generate_username()
+        password = username
+
+        # Try login → fallback to register
+        self.user = self.login(username, password) or self.register(username, password)
+
+        if not self.user:
+            raise Exception(f"LightUser: Failed to initialize user {username}")
+
+    @task(4)
+    def view_conversations(self):
+        """Light user loads their conversation list."""
+        self.client.get(
+            "/api/conversations",
+            headers=self.auth_headers(self.user["auth_token"]),
+            name="/api/conversations"
+        )
+
+    @task(4)
+    def view_messages(self):
+        """View messages from a random existing conversation."""
+        convos_response = self.client.get(
+            "/api/conversations",
+            headers=self.auth_headers(self.user["auth_token"]),
+            name="/api/conversations"
+        )
+
+        if convos_response.status_code != 200:
+            return
+        
+        convos = convos_response.json()
+        if not convos:
+            return
+
+        convo = random.choice(convos)
+        convo_id = convo["id"]
+
+        self.client.get(
+            f"/api/messages?conversation_id={convo_id}",
+            headers=self.auth_headers(self.user["auth_token"]),
+            name="/api/messages"
+        )
+
+    @task(1)
+    def maybe_create_conversation(self):
+        """10% chance this user creates a new conversation."""
+        if random.random() < 0.10:
+            response = self.client.post(
+                "/api/conversations",
+                json={"title": f"test_conv_{random.randint(1, 100000)}"},
+                headers=self.auth_headers(self.user["auth_token"]),
+                name="/api/conversations/create"
+            )
+
+            # Track in user_store if successful
+            if response.status_code in (200, 201):
+                data = response.json()
+                convo_id = data.get("id")
+                if convo_id:
+                    user_store.add_convo(convo_id, self.user["username"])
