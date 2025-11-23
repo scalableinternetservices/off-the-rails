@@ -219,7 +219,7 @@ class IdleUser(HttpUser, ChatBackend):
 
 class NewUser(HttpUser, ChatBackend):
     # 1 out of 10 users, registers and does very little
-    weight = 1
+    weight = 2
     wait_time = between(10, 20)
 
     def on_start(self):
@@ -227,9 +227,9 @@ class NewUser(HttpUser, ChatBackend):
         self.last_check_time = None
         username = user_name_generator.generate_username()
         password = username
-        self.user = self.register(username, password)
-        if not self.user:
-            self.user = self.login(username, password)
+        self.user = self.register(username, password) or self.login(username, password)
+        #if not self.user:
+        #    self.user = self.login(username, password)
         if not self.user:
             raise Exception(f"NewUser: Failed to register new user {username}")
         if self.create_convo(self.user):
@@ -376,7 +376,7 @@ class InitiatorUser(HttpUser, ChatBackend):
         self.check_message_updates(self.user)
         self.last_check_time = datetime.utcnow()
 
-class ExpertUser2(HttpUser, ChatBackend):
+class ExpertUser(HttpUser, ChatBackend):
     """
     Persona: An expert user who checks the queue, claims conversations, replies, and polls for updates.
     """
@@ -478,7 +478,9 @@ class ExpertUser2(HttpUser, ChatBackend):
             self.active_conversations[conversation_id] = {
                 "last_reply": datetime.utcnow()
             }
+            #print(f"[{self.user['username']}] Claimed conversation {conversation_id}")
             return True
+        #print(f"[{self.user['username']}] Failed to claim conversation {conversation_id} (status {response.status_code})")
         return False # NEW: return false if convo is not claimed bc of race conditions
 
     def reply_to_conversation(self, convo_id):
