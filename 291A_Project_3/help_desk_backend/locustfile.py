@@ -30,39 +30,6 @@ class UserNameGenerator:
         return f"user_{(self.seed + self.current_index * self.prime_number) % self.max_users}"
 
 
-# class UserStore:
-#     def __init__(self):
-#         self.used_usernames = {}
-#         self.username_lock = threading.Lock()
-#         self.conversations = {}
-#         self.convo_lock = threading.Lock()
-
-#     def get_random_user(self):
-#         with self.username_lock:
-#             random_username = random.choice(list(self.used_usernames.keys()))
-#             return self.used_usernames[random_username]
-
-#     def store_user(self, username, auth_token, user_id):
-#         with self.username_lock:
-#             self.used_usernames[username] = {
-#                 "username": username,
-#                 "auth_token": auth_token,
-#                 "user_id": user_id
-#             }
-#             return self.used_usernames[username]
-
-#     def add_convo(self, username, convo_id):
-#         with self.convo_lock:
-#             if username not in self.conversations:
-#                 self.conversations[username] = []
-#             self.conversations[username].append(convo_id)
-
-#     def get_random_convo(self, username):
-#         with self.convo_lock:
-#             convos = self.conversations.get(username, [])
-#             if not convos:
-#                 return None
-#             return random.choice(convos)
 class UserStore:
     def __init__(self):
         self.used_usernames = {}
@@ -137,7 +104,7 @@ class ChatBackend():
             json={"username": username, "password": password},
             name="/auth/register"
         )
-        if response.status_code == 200 or response.status_code == 201:
+        if response.status_code in (200, 201): #changed to make it look a bit cleaner
             data = response.json()
             return user_store.store_user(username, data.get("token"), data.get("user", {}).get("id"))
         return None
@@ -145,19 +112,6 @@ class ChatBackend():
     def auth_headers(self, token):
         return {"Authorization": f"Bearer {token}"}
 
-    # def create_convo(self, user):
-    #     title = f"Conversation {random.randint(1, 10000) * random.randint(1, 10000)}"
-    #     response = self.client.post(
-    #         "/conversations",
-    #         json={"title": title},
-    #         headers=self.auth_headers(user.get("auth_token")),
-    #         name="/conversations"
-    #     )
-    #     if response.status_code == 200 or response.status_code == 201:
-    #         data = response.json()
-    #         user_store.add_convo(data["id"])
-    #         return True
-    #     return False
     def create_convo(self, user):
         title = f"Conversation {random.randint(1, 10000) * random.randint(1, 10000)}"
         response = self.client.post(
@@ -166,7 +120,7 @@ class ChatBackend():
             headers=self.auth_headers(user.get("auth_token")),
             name="/conversations"
         )
-        if response.status_code == 200 or response.status_code == 201:
+        if response.status_code in (200, 201):
             data = response.json()
             convo_id = data["id"]
             user_store.add_convo(convo_id, user.get("username"))  # Pass username
@@ -181,15 +135,7 @@ class ChatBackend():
             headers=self.auth_headers(user.get("auth_token")),
             name="/messages"
         )
-        return response.status_code == 200 or response.status_code == 201
-
-    # def expert_queue(self, user):
-    #     response = self.client.get(
-    #         "/expert/queue",
-    #         headers=self.auth_headers(user.get("auth_token")),
-    #         name="/expert/queue"
-    #     )
-
+        return response.status_code in (200, 201)
 
 
     def check_conversation_updates(self, user):
@@ -348,23 +294,6 @@ class ActiveUser(HttpUser, ChatBackend):
         self.check_conversation_updates(self.user)
         self.last_check_time = datetime.utcnow()
 
-    # @task(2)
-    # def read_random_conversation(self):
-    #     # Simulate navigating to a conversation page
-    #     cid = user_store.get_random_convo()
-    #     if not cid:
-    #         return
-    #     response = self.client.get(
-    #         f"/conversations/{cid}",
-    #         headers=self.auth_headers(self.user.get("auth_token")),
-    #         name="/conversations#show"
-    #     )
-    #     return response.status_code == 200
-
-# class ExpertUser(HttpUser, ChatBackend):
-#     weight = 7
-#     wait_time = between(5, 10)
-
 
 class InitiatorUser(HttpUser, ChatBackend):
     """
@@ -521,7 +450,12 @@ class ExpertUser2(HttpUser, ChatBackend):
         if waiting:
             num_to_claim = min(len(waiting), random.randint(1, 2))
             for convo in waiting[:num_to_claim]:
-                self.claim_conversation(convo["id"])
+                # self.claim_conversation(convo["id"])
+
+                # NEW: idk if this prevents race conditions but lets see
+                claimed = self.claim_conversation(convo["id"])
+                if not claimed:
+                    continue
 
         self.check_message_updates(self.user)
         self.check_conversation_updates(self.user)
@@ -544,6 +478,8 @@ class ExpertUser2(HttpUser, ChatBackend):
             self.active_conversations[conversation_id] = {
                 "last_reply": datetime.utcnow()
             }
+            return True
+        return False # NEW: return false if convo is not claimed bc of race conditions
 
     def reply_to_conversation(self, convo_id):
         convo_state = self.active_conversations.get(convo_id)
