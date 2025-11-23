@@ -517,7 +517,7 @@ class LightUser(HttpUser, ChatBackend):
         username = user_name_generator.generate_username()
         password = username
 
-        # Try login → fallback to register
+        # Try login; fallback to register gets error, do we want errors or should i take out
         self.user = self.login(username, password) or self.register(username, password)
 
         if not self.user:
