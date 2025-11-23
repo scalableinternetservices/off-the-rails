@@ -574,3 +574,75 @@ class LightUser(HttpUser, ChatBackend):
                 convo_id = data.get("id")
                 if convo_id:
                     user_store.add_convo(convo_id, self.user["username"])
+                    
+                    
+class SlowExpertUser(HttpUser, ChatBackend):
+    """
+    Persona: 'Deep Work' Expert.
+    1. Registers and sets up Expert Profile.
+    2. Claims exactly ONE conversation.
+    3. Sends a message to that conversation every 15 seconds.
+    """
+    weight = 2
+    # Strict 15-second pacing
+    wait_time = between(15, 15)
+
+    def on_start(self):
+        # 1. Register
+        username = user_name_generator.generate_username()
+        self.user = self.register(username, username) or self.login(username, username)
+        if not self.user:
+            raise Exception(f"SlowExpert: Failed to login {username}")
+
+        # 2. Switch to Expert (Create Profile)
+        self.ensure_expert_profile()
+        
+        # Track the ONE conversation this user works on
+        self.my_ticket = None
+
+    def ensure_expert_profile(self):
+        # Idempotent check: Try to get profile, create if missing
+        res = self.client.get("/expert/profile", headers=self.auth_headers(self.user["auth_token"]), name="/expert/profile")
+        if res.status_code == 404:
+            self.client.put(
+                "/expert/profile", 
+                json={"bio": "Slow Responder", "knowledgeBaseLinks": []}, 
+                headers=self.auth_headers(self.user["auth_token"]),
+                name="/expert/profile (create)"
+            )
+
+    @task
+    def work_ticket(self):
+        # PHASE A: If we don't have a ticket yet, try to claim one
+        if not self.my_ticket:
+            self.find_and_claim_ticket()
+        
+        # PHASE B: If we have a ticket, work on it (send message)
+        else:
+            self.send_message(self.user, self.my_ticket)
+
+    def find_and_claim_ticket(self):
+        # 1. Check the real API queue
+        response = self.client.get(
+            "/expert/queue",
+            headers=self.auth_headers(self.user["auth_token"]),
+            name="/expert/queue"
+        )
+        
+        if response.status_code == 200:
+            data = response.json()
+            waiting = data.get("waitingConversations", [])
+            
+            # 2. If tickets exist, claim the first one
+            if waiting:
+                target_id = waiting[0]["id"]
+                claim_res = self.client.post(
+                    f"/expert/conversations/{target_id}/claim",
+                    headers=self.auth_headers(self.user["auth_token"]),
+                    name="/expert/conversations/claim"
+                )
+                
+                if claim_res.status_code == 200:
+                    self.my_ticket = target_id
+                    # Print optional log to verify it's working
+                    # print(f"SlowExpert {self.user['username']} claimed ticket {target_id}")
