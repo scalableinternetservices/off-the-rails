@@ -11,7 +11,42 @@ import random
 import threading
 from datetime import datetime
 from locust import HttpUser, task, between
+from locust import LoadTestShape
+import time
 
+class StepLoadShape(LoadTestShape):
+    """
+    Step load pattern:
+    Each step lasts 60 seconds.
+    Spawn rate increases each step.
+    """
+    steps = [
+        (60, 2),     
+        (60, 8),     
+        (60, 32),    
+        (60, 64),    
+        (60, 128),   
+        (60, 256),
+        (60, 512),
+        (60, 1024),
+        (60, 2048),
+        (60, 4096),
+        (60, 8192),
+    ]
+
+    start_time = time.time()
+
+    def tick(self):
+        run_time = time.time() - self.start_time
+        elapsed = 0
+
+        for duration, spawn_rate in self.steps:
+            elapsed += duration
+            if run_time < elapsed:
+                # None = keep current user count
+                return None, spawn_rate
+
+        return None
 
 # Configuration
 MAX_USERS = 10000
@@ -75,7 +110,6 @@ class UserStore:
             if username not in self.user_conversations or not self.user_conversations[username]:
                 return None
             return random.choice(self.user_conversations[username])
-
 
 user_store = UserStore()
 user_name_generator = UserNameGenerator(max_users=MAX_USERS)
