@@ -15,12 +15,7 @@ from locust import LoadTestShape
 import time
 
 class StepLoadShape(LoadTestShape):
-    """
-    Step load pattern:
-    Each step lasts N seconds,
-    spawn rate increases each step.
-    """
-
+   # dynamic arrival rate plan
     steps = [
         (60, 2),
         (60, 8),
@@ -42,11 +37,9 @@ class StepLoadShape(LoadTestShape):
         for step_duration, spawn_rate in self.steps:
             elapsed += step_duration
             if run_time < elapsed:
-                # use a realistic large max user count
-                target_users = 20000
+                target_users = 10000
                 return (target_users, spawn_rate)
 
-        # End test after last step
         return None
 
 # Configuration
@@ -70,9 +63,9 @@ class UserStore:
     def __init__(self):
         self.used_usernames = {}
         self.username_lock = threading.Lock()
-        self.conversations = []  # Keep for backward compatibility if needed
+        self.conversations = [] 
         self.convo_lock = threading.Lock()
-        self.user_conversations = {}  # NEW: Track conversations per username
+        self.user_conversations = {}  # Track conversations per username
         self.user_convo_lock = threading.Lock()
 
     def get_random_user(self):
@@ -106,7 +99,7 @@ class UserStore:
                 return None
             return random.choice(self.conversations)
     
-    def get_user_convo(self, username):  # NEW: Get conversation for specific username
+    def get_user_convo(self, username):  # Get conversation for specific username
         with self.user_convo_lock:
             if username not in self.user_conversations or not self.user_conversations[username]:
                 return None
@@ -139,7 +132,7 @@ class ChatBackend():
             json={"username": username, "password": password},
             name="/auth/register"
         )
-        if response.status_code in (200, 201): #changed to make it look a bit cleaner
+        if response.status_code in (200, 201):
             data = response.json()
             return user_store.store_user(username, data.get("token"), data.get("user", {}).get("id"))
         return None
@@ -158,9 +151,9 @@ class ChatBackend():
         if response.status_code in (200, 201):
             data = response.json()
             convo_id = data["id"]
-            user_store.add_convo(convo_id, user.get("username"))  # Pass username
-            return convo_id  # Return the ID instead of True
-        return None  # Return None instead of False
+            user_store.add_convo(convo_id, user.get("username"))  
+            return convo_id  
+        return None  
     
     def send_message(self, user, convo_id):
         content = f"Message {random.randint(1, 10000) * random.randint(1, 10000)}"
@@ -263,12 +256,9 @@ class NewUser(HttpUser, ChatBackend):
         username = user_name_generator.generate_username()
         password = username
         self.user = self.register(username, password) or self.login(username, password)
-        #if not self.user:
-        #    self.user = self.login(username, password)
         if not self.user:
             raise Exception(f"NewUser: Failed to register new user {username}")
         if self.create_convo(self.user):
-            # cid = user_store.get_random_convo() #NOTE: changed
             cid = user_store.get_user_convo(username)
             if cid:
                 self.send_message(self.user, cid)
@@ -315,8 +305,6 @@ class ActiveUser(HttpUser, ChatBackend):
 
     @task(10)
     def post_message(self):
-        # Post messages in random existing conversations
-        # cid = user_store.get_random_convo() NOTE: changed
         cid = user_store.get_user_convo(self.user.get("username"))
         if cid:
             self.send_message(self.user, cid)
@@ -434,7 +422,7 @@ class ExpertUser(HttpUser, ChatBackend):
 
         self.active_conversations = {}
 
-    # Helper: Ensure expert profile exists
+    # Ensure expert profile exists
     def ensure_expert_profile(self):
         response = self.client.get(
             "/expert/profile",
@@ -485,9 +473,6 @@ class ExpertUser(HttpUser, ChatBackend):
         if waiting:
             num_to_claim = min(len(waiting), random.randint(1, 2))
             for convo in waiting[:num_to_claim]:
-                # self.claim_conversation(convo["id"])
-
-                # NEW: idk if this prevents race conditions but lets see
                 claimed = self.claim_conversation(convo["id"])
                 if not claimed:
                     continue
@@ -513,10 +498,8 @@ class ExpertUser(HttpUser, ChatBackend):
             self.active_conversations[conversation_id] = {
                 "last_reply": datetime.utcnow()
             }
-            #print(f"[{self.user['username']}] Claimed conversation {conversation_id}")
             return True
-        #print(f"[{self.user['username']}] Failed to claim conversation {conversation_id} (status {response.status_code})")
-        return False # NEW: return false if convo is not claimed bc of race conditions
+        return False
 
     def reply_to_conversation(self, convo_id):
         convo_state = self.active_conversations.get(convo_id)
@@ -540,10 +523,7 @@ class ExpertUser(HttpUser, ChatBackend):
 
 
 class LightUser(HttpUser, ChatBackend):
-    """
-    Persona: Light browsing user.
-    Logs in or registers, views conversations, views messages,and occasionally creates a conversation.
-    """
+    # views convos, views messages, creates convo sometimes
     weight = 3
     wait_time = between(10, 15)
 
@@ -551,8 +531,6 @@ class LightUser(HttpUser, ChatBackend):
         self.last_check_time = None
         username = user_name_generator.generate_username()
         password = username
-
-        # Try login; fallback to register gets error, do we want errors or should i take out
         self.user = self.login(username, password) or self.register(username, password)
 
         if not self.user:
@@ -560,7 +538,7 @@ class LightUser(HttpUser, ChatBackend):
 
     @task(4)
     def view_conversations(self):
-        """Light user loads their conversation list."""
+        # loads convo
         response = self.client.get(
             "/conversations",
             headers=self.auth_headers(self.user["auth_token"]),
@@ -569,13 +547,12 @@ class LightUser(HttpUser, ChatBackend):
 
     @task(4)
     def view_messages(self):
-        """View messages from a random existing conversation."""
+        # viewing
         convos_response = self.client.get(
             "/conversations",
             headers=self.auth_headers(self.user["auth_token"]),
             name="/conversations"
         )
-
         if convos_response.status_code != 200:
             return
         
@@ -594,7 +571,7 @@ class LightUser(HttpUser, ChatBackend):
 
     @task(1)
     def maybe_create_conversation(self):
-        """10% chance this user creates a new conversation."""
+        # only creates convo 10% of time
         if random.random() < 0.10:
             response = self.client.post(
                 "/conversations",
@@ -603,7 +580,6 @@ class LightUser(HttpUser, ChatBackend):
                 name="/conversations/create"
             )
 
-            # Track in user_store if successful
             if response.status_code in (200, 201):
                 data = response.json()
                 convo_id = data.get("id")
@@ -648,11 +624,8 @@ class SlowExpertUser(HttpUser, ChatBackend):
 
     @task
     def work_ticket(self):
-        # PHASE A: If we don't have a ticket yet, try to claim one
         if not self.my_ticket:
             self.find_and_claim_ticket()
-        
-        # PHASE B: If we have a ticket, work on it (send message)
         else:
             self.send_message(self.user, self.my_ticket)
 
@@ -668,7 +641,7 @@ class SlowExpertUser(HttpUser, ChatBackend):
             data = response.json()
             waiting = data.get("waitingConversations", [])
             
-            # 2. If tickets exist, claim the first one
+            # claim first ticket if it exists
             if waiting:
                 target_id = waiting[0]["id"]
                 claim_res = self.client.post(
@@ -679,5 +652,3 @@ class SlowExpertUser(HttpUser, ChatBackend):
                 
                 if claim_res.status_code == 200:
                     self.my_ticket = target_id
-                    # Print optional log to verify it's working
-                    # print(f"SlowExpert {self.user['username']} claimed ticket {target_id}")
