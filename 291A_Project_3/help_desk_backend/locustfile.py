@@ -17,15 +17,16 @@ import time
 class StepLoadShape(LoadTestShape):
     """
     Step load pattern:
-    Each step lasts 60 seconds.
-    Spawn rate increases each step.
+    Each step lasts N seconds,
+    spawn rate increases each step.
     """
+
     steps = [
-        (60, 2),     
-        (60, 8),     
-        (60, 32),    
-        (60, 64),    
-        (60, 128),   
+        (60, 2),
+        (60, 8),
+        (60, 32),
+        (60, 64),
+        (60, 128),
         (60, 256),
         (60, 512),
         (60, 1024),
@@ -34,20 +35,18 @@ class StepLoadShape(LoadTestShape):
         (60, 8192),
     ]
 
-    start_time = time.time()
-
     def tick(self):
-        run_time = time.time() - self.start_time
+        run_time = self.get_run_time()
         elapsed = 0
 
-        for duration, spawn_rate in self.steps:
-            elapsed += duration
+        for step_duration, spawn_rate in self.steps:
+            elapsed += step_duration
             if run_time < elapsed:
-                # MUST specify a user count; spawn rate alone does nothing
-                user_count = 100000  # any large number is fine
-                return user_count, spawn_rate
+                # use a realistic large max user count
+                target_users = 20000
+                return (target_users, spawn_rate)
 
-        # End test
+        # End test after last step
         return None
 
 # Configuration
