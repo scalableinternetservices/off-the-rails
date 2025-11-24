@@ -43,9 +43,11 @@ class StepLoadShape(LoadTestShape):
         for duration, spawn_rate in self.steps:
             elapsed += duration
             if run_time < elapsed:
-                # None = keep current user count
-                return None, spawn_rate
+                # MUST specify a user count; spawn rate alone does nothing
+                user_count = 100000  # any large number is fine
+                return user_count, spawn_rate
 
+        # End test
         return None
 
 # Configuration
