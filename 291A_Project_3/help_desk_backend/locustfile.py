@@ -5,7 +5,7 @@ User personas:
 1. New user registering for the first time (1 in every 10 users)
 2. Polling user that checks for updates every 5 seconds
 3. Active user that uses existing usernames to create conversations, post messages, and browse
-"""
+""" 
 
 import random
 import threading
