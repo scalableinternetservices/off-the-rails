@@ -23,9 +23,11 @@ services:
       - RAILS_ENV=development
       - DATABASE_URL=mysql2://rails_user:password@db:3306/rails_development
       - SECRET_KEY_BASE=development_secret_key_base_that_is_very_long_and_secure_for_development_only
+      - AWS_SHARED_CREDENTIALS_FILE=/app/.aws/cs291_credentials # for AWS SDK
     volumes:
       - .:/app
       - bundle_cache:/usr/local/bundle
+      - ${HOME}/.aws:/app/.aws:ro  # Mount AWS credentials as read-only
     depends_on:
       - db
     stdin_open: true
