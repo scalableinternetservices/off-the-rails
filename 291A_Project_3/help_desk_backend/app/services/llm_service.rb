@@ -1,4 +1,6 @@
 # app/services/llm_service.rb
+require 'open-uri'
+
 class LlmService
   def initialize
     @client = BedrockClient.new(
@@ -33,7 +35,7 @@ class LlmService
       with the most appropriate expert based on their bio and knowledge base.
       
       Return ONLY the expert ID (numeric) that best matches the question.
-      Do not include any explanation, just the ID number.
+      Do not include any explanation, just the ID number. You cannot assign user as their own expert. 
     PROMPT
 
     user_prompt = <<~PROMPT
@@ -64,7 +66,16 @@ class LlmService
   def check_faq_response(message_content, expert_profile)
     return nil if expert_profile.knowledge_base_links.blank?
 
-    faq_content = expert_profile.knowledge_base_links.join("\n")
+    faq_content = expert_profile.knowledge_base_links.map do |url|
+      begin
+        URI.open(url).read
+      rescue StandardError => e
+        Rails.logger.warn("Failed to fetch #{url}: #{e.message}")
+        ""
+      end
+    end.join("\n\n")
+
+    Rails.logger.info("In LLM service, FAQ Content: #{faq_content}")
 
     system_prompt = <<~PROMPT
       You are a helpful assistant that answers questions based on an expert's FAQ.
@@ -83,7 +94,9 @@ class LlmService
       
       Can you answer this question from the FAQ?
     PROMPT
-
+    
+    Rails.logger.info("In LLM service, prompt: #{user_prompt}")
+    
     response = @client.call(
       system_prompt: system_prompt,
       user_prompt: user_prompt,
@@ -92,9 +105,11 @@ class LlmService
     )
 
     output = response[:output_text].strip
+
+    Rails.logger.info("In LLM service, response: #{output}")
     
     # Return nil if no match found
-    return nil if output == "NO_FAQ_MATCH"
+    return nil if output.include?("NO_FAQ_MATCH")
     
     output
   end
@@ -132,5 +147,6 @@ class LlmService
     )
 
     response[:output_text].strip
+    Rails.logger.info("Response: #{response[:output_text].strip}")
   end
 end
