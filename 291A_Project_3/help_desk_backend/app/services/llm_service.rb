@@ -112,7 +112,7 @@ class LlmService
 
     system_prompt = <<~PROMPT
       You are a summarization assistant. Create a brief, informative summary 
-      of the conversation in 1-2 sentences. Focus on the main topic and any 
+      of the conversation so far in 1-2 sentences. Focus on the main topic and any 
       key points or resolutions.
     PROMPT
 
@@ -123,6 +123,7 @@ class LlmService
       Provide a brief summary (1-2 sentences):
     PROMPT
 
+    Rails.logger.info("Prompt: #{user_prompt}")
     response = @client.call(
       system_prompt: system_prompt,
       user_prompt: user_prompt,
