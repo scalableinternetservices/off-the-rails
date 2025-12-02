@@ -3,6 +3,7 @@ require 'open-uri'
 
 class LlmService
   def initialize
+    #define the bedrock client (claude-3-5-haiku-20241022-v1:0)
     @client = BedrockClient.new(
       model_id: "anthropic.claude-3-5-haiku-20241022-v1:0",
       region: ENV["AWS_REGION"] || "us-west-2"
@@ -114,7 +115,8 @@ class LlmService
     output
   end
 
-  # Generate conversation summary
+  # Generate conversation summary 
+  ## This is shown in LOGS but is not currently implemented in the front end!
   def generate_conversation_summary(conversation)
     messages = conversation.messages.order(:created_at).limit(20)
     
@@ -125,6 +127,7 @@ class LlmService
       "#{msg.sender_role}: #{msg.content}"
     end.join("\n")
 
+    ### Create prompts for summary generation
     system_prompt = <<~PROMPT
       You are a summarization assistant. Create a brief, informative summary 
       of the conversation so far in 1-2 sentences. Focus on the main topic and any 

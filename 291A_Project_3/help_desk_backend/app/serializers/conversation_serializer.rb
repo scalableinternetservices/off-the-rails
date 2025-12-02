@@ -28,6 +28,7 @@ class ConversationSerializer
 
   private
 
+  ## NOTE Here is a refrence to summary generation logic for bullet point three
   def self.get_or_generate_summary(conversation)
     current_message_count = conversation.messages.count
 
