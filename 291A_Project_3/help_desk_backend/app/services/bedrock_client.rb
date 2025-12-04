@@ -41,7 +41,20 @@ class BedrockClient
   def call(system_prompt:, user_prompt:, max_tokens: 1024, temperature: 0.7)
 
     if should_fake_llm_call?
-      sleep(rand(0.8..3.5)) # Simulate a delay
+      # sleep(rand(0.8..3.5)) # Simulate a delay
+      # get length of prompt
+      prompt_len = system_prompt.length + user_prompt.length
+
+      # convert length to delay
+      #   set a base delay ~ 0.2 s
+      #   add delay rate per character ~ 0.002 s / character
+      #   add random jitter ~ 0-0.2 s
+      base_delay = 0.2
+      rate_per_char = 0.002
+      jitter = rand(0.0..0.2)
+      delay = base_delay + rate_per_char + jitter
+      sleep(delay)
+      
       return {
         output_text: "This is a fake response from the LLM.",
         raw_response: nil
