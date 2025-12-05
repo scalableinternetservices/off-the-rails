@@ -28,7 +28,7 @@ class ConversationsController < ApplicationController
     
     if @conversation.save
       # Auto-assign expert using LLM after conversation is created
-      AutoAssignExpertJob.perform_now(@conversation.id)
+      AutoAssignExpertJob.perform_later(@conversation.id)
       
       render json: ConversationSerializer.for_user(@conversation, viewer_id: @current_user.id), status: :created
     else
