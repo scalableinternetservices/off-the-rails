@@ -43,8 +43,19 @@ Rails.application.configure do
   # Don't log any deprecations.
   config.active_support.report_deprecations = false
 
-  # Replace the default in-process memory cache store with a durable alternative.
-  config.cache_store = :solid_cache_store
+  # Use Redis for distributed caching in production (better for load testing)
+  # Falls back to solid_cache if Redis is not available
+  if ENV["REDIS_URL"].present?
+    config.cache_store = :redis_cache_store, {
+      url: ENV["REDIS_URL"],
+      expires_in: 1.hour,
+      namespace: "help_desk_backend",
+      pool_size: ENV.fetch("RAILS_MAX_THREADS", 5).to_i,
+      pool_timeout: 5
+    }
+  else
+    config.cache_store = :solid_cache_store
+  end
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue

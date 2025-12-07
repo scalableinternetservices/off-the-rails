@@ -12,6 +12,14 @@ services:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
   web:
     build:
       context: .
@@ -25,6 +33,7 @@ services:
       - SECRET_KEY_BASE=development_secret_key_base_that_is_very_long_and_secure_for_development_only
       - AWS_SHARED_CREDENTIALS_FILE=/app/.aws/cs291_credentials # for AWS SDK to find credentials
       - ALLOW_BEDROCK_CALL=true # Enable Bedrock calls in development
+      - REDIS_URL=redis://redis:6379/0
 
     volumes:
       - .:/app
@@ -32,6 +41,7 @@ services:
       - ${HOME}/.aws:/app/.aws:ro  # Mount AWS credentials as read-only
     depends_on:
       - db
+      - redis
     stdin_open: true
     tty: true
     command: >
@@ -43,3 +53,4 @@ services:
 volumes:
   mysql_data:
   bundle_cache:
+  redis_data:
