@@ -27,7 +27,7 @@ class MessagesController < ApplicationController
       
       # Try to auto-respond from FAQ if this is an initiator message and expert is assigned
       if message.sender_role == 'initiator' && @conversation.assigned_expert_id.present?
-        AutoRespondFromFaqJob.perform_later(message.id)
+        AutoRespondFromFaqJob.perform_now(message.id)
       end
       
       render json: message_json(message), status: :created
