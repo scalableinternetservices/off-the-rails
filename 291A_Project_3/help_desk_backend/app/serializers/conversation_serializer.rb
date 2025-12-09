@@ -42,7 +42,7 @@ class ConversationSerializer
 
     if needs_generation
       # Queue job to generate new summary
-      GenerateSummaryJob.perform_later(conversation.id)
+      GenerateSummaryJob.perform_now(conversation.id)
       
       # Return existing summary if available, otherwise placeholder
       return conversation.summary.presence || "Generating summary..."
