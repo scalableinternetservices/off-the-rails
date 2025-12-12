@@ -25,7 +25,11 @@ class ConversationsController < ApplicationController
       initiator: @current_user,
       status: 'waiting'
     )
+    
     if @conversation.save
+      # Auto-assign expert using LLM after conversation is created
+      AutoAssignExpertJob.perform_later(@conversation.id)
+      
       render json: ConversationSerializer.for_user(@conversation, viewer_id: @current_user.id), status: :created
     else
       render json: { errors: @conversation.errors.full_messages }, status: :unprocessable_entity
@@ -45,5 +49,4 @@ class ConversationsController < ApplicationController
   def conversation_params
     params.require(:conversation).permit(:title, :status, :initiator_id, :assigned_expert_id)
   end
-
 end

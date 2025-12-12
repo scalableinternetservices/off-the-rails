@@ -24,6 +24,12 @@ class MessagesController < ApplicationController
 
     if message.save
       @conversation.update(last_message_at: message.created_at)
+      
+      # Try to auto-respond from FAQ if this is an initiator message and expert is assigned
+      if message.sender_role == 'initiator' && @conversation.assigned_expert_id.present?
+        AutoRespondFromFaqJob.perform_now(message.id)
+      end
+      
       render json: message_json(message), status: :created
     else
       render json: { errors: message.errors.full_messages }, status: :unprocessable_entity

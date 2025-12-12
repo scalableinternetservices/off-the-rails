@@ -51,5 +51,9 @@ module HelpDeskBackend
           credentials: true
       end
     end
+
+    # Configure ActiveJob to use Sidekiq
+    config.active_job.queue_adapter = :sidekiq
+    
   end
 end

@@ -1,5 +1,8 @@
 source "https://rubygems.org"
 
+# NOTE: added for LLM setup
+gem "aws-sdk-bedrockruntime"
+
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 8.1.1"
 # Use mysql as the database for Active Record
@@ -25,6 +28,10 @@ gem "solid_cache"
 gem "solid_queue"
 gem "solid_cable"
 
+# Redis for caching (alternative to solid_cache for distributed systems)
+gem "redis", "~> 5.0"
+gem "hiredis", "~> 0.6"
+
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 
@@ -47,3 +54,7 @@ group :development, :test do
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
 end
+
+# NOTE: additional gems for async job queue
+gem 'sidekiq'
+gem 'redis', '~> 5.0'

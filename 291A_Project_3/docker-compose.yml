@@ -12,6 +12,14 @@ services:
       - mysql_data:/var/lib/mysql
     command: --default-authentication-plugin=mysql_native_password
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
   web:
     build:
       context: .
@@ -23,11 +31,18 @@ services:
       - RAILS_ENV=development
       - DATABASE_URL=mysql2://rails_user:password@db:3306/rails_development
       - SECRET_KEY_BASE=development_secret_key_base_that_is_very_long_and_secure_for_development_only
+      - AWS_SHARED_CREDENTIALS_FILE=/app/.aws/cs291_credentials # for AWS SDK to find credentials
+      - ALLOW_BEDROCK_CALL=true # Enable Bedrock calls in development
+      - REDIS_URL=redis://redis:6379/0
+
     volumes:
       - .:/app
       - bundle_cache:/usr/local/bundle
+      - ${HOME}/.aws:/app/.aws:ro  # Mount AWS credentials as read-only
+    working_dir: /app/help_desk_backend
     depends_on:
       - db
+      - redis
     stdin_open: true
     tty: true
     command: >
@@ -36,6 +51,37 @@ services:
         tail -f /dev/null
       "
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+
+  sidekiq:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: root
+    environment:
+      - RAILS_ENV=development
+      - DATABASE_URL=mysql2://rails_user:password@db:3306/rails_development
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY_BASE=development_secret_key_base_that_is_very_long_and_secure_for_development_only
+      - AWS_SHARED_CREDENTIALS_FILE=/app/.aws/cs291_credentials
+      - ALLOW_BEDROCK_CALL=true
+    volumes:
+      - .:/app
+      - bundle_cache:/usr/local/bundle
+      - ${HOME}/.aws:/app/.aws:ro
+    working_dir: /app/help_desk_backend
+    depends_on:
+      - db
+      - redis
+    command: bundle exec sidekiq -C config/sidekiq.yml
+
 volumes:
   mysql_data:
   bundle_cache:
+  redis_data:

@@ -1,0 +1,7 @@
+# help_desk_backend/config/sidekiq.yml
+:concurrency: 5
+:queues:
+  - default
+  - mailers
+  - active_storage_analysis
+  - active_storage_purge
