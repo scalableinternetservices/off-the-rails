@@ -28,6 +28,10 @@ gem "solid_cache"
 gem "solid_queue"
 gem "solid_cable"
 
+# Redis for caching (alternative to solid_cache for distributed systems)
+gem "redis", "~> 5.0"
+gem "hiredis", "~> 0.6"
+
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
 

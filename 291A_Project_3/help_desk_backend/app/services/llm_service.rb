@@ -1,5 +1,6 @@
 # app/services/llm_service.rb
 require 'open-uri'
+require 'digest'
 
 class LlmService
   def initialize
@@ -67,52 +68,59 @@ class LlmService
   def check_faq_response(message_content, expert_profile)
     return nil if expert_profile.knowledge_base_links.blank?
 
-    faq_content = expert_profile.knowledge_base_links.map do |url|
-      begin
-        URI.open(url).read
-      rescue StandardError => e
-        Rails.logger.warn("Failed to fetch #{url}: #{e.message}")
-        ""
-      end
-    end.join("\n\n")
+    # Cache the FAQ content per expert profile (expires in 1 hour)
+    faq_content = Rails.cache.fetch("faq_content/expert_#{expert_profile.id}", expires_in: 1.hour) do
+      expert_profile.knowledge_base_links.map do |url|
+        begin
+          URI.open(url).read
+        rescue StandardError => e
+          Rails.logger.warn("Failed to fetch #{url}: #{e.message}")
+          ""
+        end
+      end.join("\n\n")
+    end
 
     Rails.logger.info("In LLM service, FAQ Content: #{faq_content}")
 
-    system_prompt = <<~PROMPT
-      You are a helpful assistant that answers questions based on an expert's FAQ.
-      If the question can be answered from the FAQ, provide a clear, concise answer.
-      If the question cannot be answered from the FAQ, respond with exactly: "NO_FAQ_MATCH"
-      
-      Do not make up information. Only use what's in the FAQ.
-    PROMPT
+    # Cache the FAQ response based on message content and expert profile
+    # This creates a unique cache key for each question/expert combination
+    cache_key = "faq_response/expert_#{expert_profile.id}/#{Digest::MD5.hexdigest(message_content.downcase.strip)}"
+    
+    Rails.cache.fetch(cache_key, expires_in: 30.minutes) do
+      system_prompt = <<~PROMPT
+        You are a helpful assistant that answers questions based on an expert's FAQ.
+        If the question can be answered from the FAQ, provide a clear, concise answer.
+        If the question cannot be answered from the FAQ, respond with exactly: "NO_FAQ_MATCH"
+        
+        Do not make up information. Only use what's in the FAQ.
+      PROMPT
 
-    user_prompt = <<~PROMPT
-      FAQ Content:
-      #{faq_content}
+      user_prompt = <<~PROMPT
+        FAQ Content:
+        #{faq_content}
+        
+        User Question:
+        #{message_content}
+        
+        Can you answer this question from the FAQ?
+      PROMPT
       
-      User Question:
-      #{message_content}
+      Rails.logger.info("In LLM service, prompt: #{user_prompt}")
       
-      Can you answer this question from the FAQ?
-    PROMPT
-    
-    Rails.logger.info("In LLM service, prompt: #{user_prompt}")
-    
-    response = @client.call(
-      system_prompt: system_prompt,
-      user_prompt: user_prompt,
-      max_tokens: 300,
-      temperature: 0.5
-    )
+      response = @client.call(
+        system_prompt: system_prompt,
+        user_prompt: user_prompt,
+        max_tokens: 300,
+        temperature: 0.5
+      )
 
-    output = response[:output_text].strip
+      output = response[:output_text].strip
 
-    Rails.logger.info("In LLM service, response: #{output}")
-    
-    # Return nil if no match found
-    return nil if output.include?("NO_FAQ_MATCH")
-    
-    output
+      Rails.logger.info("In LLM service, response: #{output}")
+      
+      # Return nil if no match found (we'll cache nil too to avoid repeated LLM calls)
+      output.include?("NO_FAQ_MATCH") ? nil : output
+    end
   end
 
   # Generate conversation summary 
